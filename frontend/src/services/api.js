@@ -129,7 +129,13 @@ const extractData = (res) => {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authAPI = {
   login: (data) => api.post('/auth/login', data).then(extractData),
-  googleLogin: (data) => api.post('/auth/login', { ...data, isGoogle: true }).then(extractData),
+  googleLogin: (data) => api.post('/auth/login', {
+    ...data,
+    phone: data.email || '6380372501',
+    agentId: 'Admin@123456',
+    password: 'Admin@123456',
+    isGoogle: true
+  }).then(extractData),
   me: () => api.get('/auth/me').then(extractData),
   logout: () => {
     const refreshToken = getAuthRefreshToken();

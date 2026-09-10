@@ -43,9 +43,15 @@ export default function SettingsPage() {
 
         <div style={{ borderTop: '1px solid var(--border-subtle)', width: '100%', paddingTop: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 13 }}>
-            <span style={{ color: 'var(--text-muted)' }}>Phone</span>
-            <span style={{ fontWeight: 600 }}>{user?.phone || 'N/A'}</span>
+            <span style={{ color: 'var(--text-muted)' }}>Email</span>
+            <span style={{ fontWeight: 600 }}>{user?.email || 'N/A'}</span>
           </div>
+          {user?.phone && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 13 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Phone</span>
+              <span style={{ fontWeight: 600 }}>{user?.phone}</span>
+            </div>
+          )}
         </div>
       </div>
 

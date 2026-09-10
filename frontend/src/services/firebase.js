@@ -1,6 +1,12 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics, isSupported, logEvent, setUserId } from "firebase/analytics";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signInWithRedirect, 
+  getRedirectResult 
+} from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -16,23 +22,49 @@ const firebaseConfig = {
 let app = null;
 let analytics = null;
 
-/**
- * Sign In with Google via Firebase Auth popup exclusively for Super Admin
- */
-export async function signInWithGoogleForAdmin() {
+function getFirebaseAuth() {
   let firebaseApp;
   if (!getApps().length) {
     firebaseApp = initializeApp(firebaseConfig);
   } else {
     firebaseApp = getApp();
   }
+  return getAuth(firebaseApp);
+}
 
-  const auth = getAuth(firebaseApp);
+/**
+ * Check if there is a pending redirect login result from Google
+ */
+export async function checkGoogleRedirectResult() {
+  try {
+    const auth = getFirebaseAuth();
+    const result = await getRedirectResult(auth);
+    if (result?.user) {
+      return result.user;
+    }
+  } catch (err) {
+    console.warn('[Firebase] Redirect result check:', err);
+  }
+  return null;
+}
+
+/**
+ * Sign In with Google via Firebase Auth popup with fallback to redirect
+ */
+export async function signInWithGoogleForAdmin() {
+  const auth = getFirebaseAuth();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  const result = await signInWithPopup(auth, provider);
-  return result.user;
+  try {
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (err) {
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+      console.info('[Firebase] Popup blocked or closed, falling back to redirect if requested:', err.code);
+    }
+    throw err;
+  }
 }
 
 /**

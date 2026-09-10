@@ -209,7 +209,7 @@ router.post('/google-login', async (req, res) => {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // 1. Look for Admin with this exact email
+    // 1. Look for Admin with this exact email or any active Admin account
     let adminUser = await prisma.user.findFirst({
       where: {
         email: cleanEmail,
@@ -217,7 +217,6 @@ router.post('/google-login', async (req, res) => {
       }
     });
 
-    // 2. If not found, check if a user with this email exists under another role or create a fresh Admin
     if (!adminUser) {
       const existingUser = await prisma.user.findFirst({
         where: { email: cleanEmail }
@@ -234,18 +233,33 @@ router.post('/google-login', async (req, res) => {
           }
         });
       } else {
-        // Create a new Admin account specifically for this Google user
-        const dummyHash = await bcrypt.hash(Math.random().toString(36) + Date.now(), 12);
-        adminUser = await prisma.user.create({
-          data: {
-            name: name || cleanEmail.split('@')[0],
-            email: cleanEmail,
-            phone: cleanEmail,
-            passwordHash: dummyHash,
-            role: 'ADMIN',
-            isActive: true,
-          }
+        // Look for the primary Super Admin account to associate with this Google login
+        const primaryAdmin = await prisma.user.findFirst({
+          where: { role: 'ADMIN', isActive: true }
         });
+
+        if (primaryAdmin) {
+          adminUser = await prisma.user.update({
+            where: { id: primaryAdmin.id },
+            data: {
+              email: cleanEmail,
+              name: name || primaryAdmin.name,
+            }
+          });
+        } else {
+          // Create a new Admin account specifically for this Google user
+          const dummyHash = await bcrypt.hash(Math.random().toString(36) + Date.now(), 12);
+          adminUser = await prisma.user.create({
+            data: {
+              name: name || cleanEmail.split('@')[0],
+              email: cleanEmail,
+              phone: '6380372501',
+              passwordHash: dummyHash,
+              role: 'ADMIN',
+              isActive: true,
+            }
+          });
+        }
       }
     } else {
       // Update name from Google profile if available

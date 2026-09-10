@@ -203,18 +203,18 @@ export default function AppLayout() {
                     alignItems: 'center',
                     justifyContent: 'space-between'
                   }}>
-                    <strong style={{ fontSize: 13 }}>Alerts & Notifications</strong>
+                    <strong style={{ fontSize: 13 }}>Alerts &amp; Notifications</strong>
                     <span className="badge badge-info" style={{ fontSize: 10 }}>
-                      {inAppNotifs.length} New
+                      {(isCustomer ? inAppNotifs.filter(n => !n.isAgentAlert) : inAppNotifs).length} New
                     </span>
                   </div>
 
-                  {inAppNotifs.length === 0 ? (
+                  {(isCustomer ? inAppNotifs.filter(n => !n.isAgentAlert) : inAppNotifs).length === 0 ? (
                     <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
                       No new notifications
                     </div>
                   ) : (
-                    inAppNotifs.map((n) => (
+                    (isCustomer ? inAppNotifs.filter(n => !n.isAgentAlert) : inAppNotifs).map((n) => (
                       <div 
                         key={n.id}
                         style={{
@@ -235,7 +235,7 @@ export default function AppLayout() {
                             alignItems: 'center',
                             gap: 4
                           }}>
-                            {n.isAgentAlert ? '🔑 Agent Credential Alert' : '📢 Reminder'}
+                            {n.isAgentAlert ? '🔑 Agent Credential Alert' : '📢 Payment Reminder'}
                           </span>
                           <button
                             type="button"
@@ -324,7 +324,7 @@ export default function AppLayout() {
             <img src="/logo-icon.png" alt="Finova" style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'contain' }} />
             <div>
               <h1>Finova</h1>
-              <span>{isSuperAdmin ? 'Super Admin' : isAdmin ? 'Admin Panel' : 'Agent Panel'}</span>
+              <span>{isSuperAdmin ? 'Super Admin' : isAdmin ? 'Admin Panel' : isCustomer ? 'My Account' : 'Agent Panel'}</span>
             </div>
             <button className="mobile-menu-btn" onClick={() => setSidebarOpen(false)}
               style={{ marginLeft: 'auto', display: sidebarOpen ? 'flex' : 'none' }}>

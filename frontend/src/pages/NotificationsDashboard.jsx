@@ -67,8 +67,88 @@ export default function NotificationsDashboard() {
       .finally(() => setTriggering(false));
   };
 
-  if (loading && !dashboard) return <div className="loading-page"><div className="spinner" /></div>;
+  if (loading && !dashboard && inAppAlerts.length === 0) return <div className="loading-page"><div className="spinner" /></div>;
 
+  // ─── CUSTOMER VIEW: only their personal due alerts ───
+  if (isCustomer) {
+    const myAlerts = inAppAlerts.filter(a => !a.isAgentAlert);
+    return (
+      <div className="animate-in pb-20">
+        {/* Header */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>🔔 My Payment Alerts</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Upcoming and overdue payment reminders for your loans</div>
+        </div>
+
+        {myAlerts.length === 0 ? (
+          <div className="card" style={{ padding: 40, textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+            <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 6 }}>You're all caught up!</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No pending payment alerts. Keep up the great work!</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {myAlerts.map(alert => (
+              <div
+                key={alert.id}
+                className="card"
+                style={{
+                  padding: '16px 18px',
+                  borderLeft: '4px solid var(--warning-500)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  flexWrap: 'wrap'
+                }}
+              >
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: '50%',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    color: '#f59e0b',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, fontSize: 18
+                  }}>🔔</div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+                      Payment Reminder
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                      {alert.message}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+                      {new Date(alert.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleMarkAlertRead(alert.id)}
+                  className="btn btn-ghost btn-xs"
+                  style={{ gap: 4, color: 'var(--text-muted)', flexShrink: 0 }}
+                >
+                  <Check size={12} /> Mark as Read
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Info note */}
+        <div style={{
+          marginTop: 24, padding: '12px 16px', borderRadius: 12,
+          background: 'var(--bg-secondary)', fontSize: 12, color: 'var(--text-muted)',
+          display: 'flex', alignItems: 'flex-start', gap: 8
+        }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>ℹ️</span>
+          <span>Payment reminders are automatically sent to you before your due date. Contact your loan officer if you have any questions.</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── ADMIN / AGENT VIEW ───
   return (
     <div className="animate-in pb-20">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>

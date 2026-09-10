@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
-import { initFirebaseForSuperAdmin } from '../services/firebase';
+import { initFirebaseForSuperAdmin, checkGoogleRedirectResult } from '../services/firebase';
 
 const AuthContext = createContext(null);
 
@@ -26,6 +26,19 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Check if user is returning from a Google Sign-In redirect
+    checkGoogleRedirectResult()
+      .then((googleUser) => {
+        if (googleUser) {
+          loginWithGoogle(googleUser).catch((err) => {
+            console.warn('[Auth] Google redirect login error:', err);
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('[Auth] Google redirect check error:', err);
+      });
+
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
 
     if (token && user) {

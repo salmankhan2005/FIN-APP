@@ -49,12 +49,36 @@ export async function checkGoogleRedirectResult() {
 }
 
 /**
- * Sign In with Google via Firebase Auth popup with fallback to redirect
+ * Sign In with Google via Firebase Auth redirect directly
+ */
+export async function signInWithGoogleRedirectForAdmin() {
+  const auth = getFirebaseAuth();
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  await signInWithRedirect(auth, provider);
+  return null;
+}
+
+/**
+ * Sign In with Google via Firebase Auth popup with automatic fallback to redirect
  */
 export async function signInWithGoogleForAdmin() {
   const auth = getFirebaseAuth();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
+
+  // On mobile or standalone PWA, redirect provides a much cleaner, native UX without COOP popup issues
+  const isMobileOrPwa = typeof window !== 'undefined' && (
+    window.innerWidth <= 768 || 
+    window.matchMedia('(display-mode: standalone)').matches ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  );
+
+  if (isMobileOrPwa) {
+    console.info('[Firebase] Mobile/PWA environment detected, using Google redirect login...');
+    await signInWithRedirect(auth, provider);
+    return null;
+  }
 
   try {
     const result = await signInWithPopup(auth, provider);
@@ -64,12 +88,10 @@ export async function signInWithGoogleForAdmin() {
     if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
       throw err;
     }
-    if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
-      console.info('[Firebase] Popup blocked, triggering redirect...');
-      await signInWithRedirect(auth, provider);
-      return null;
-    }
-    throw err;
+    // Any popup issue / blocked / COOP -> fallback to redirect
+    console.info('[Firebase] Popup issue or COOP block, triggering Google redirect fallback...');
+    await signInWithRedirect(auth, provider);
+    return null;
   }
 }
 

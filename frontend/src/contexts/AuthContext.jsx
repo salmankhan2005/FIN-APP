@@ -125,16 +125,18 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    try {
-      await authAPI.logout();
-    } catch (e) {}
+    // Clear local state immediately so UI responds instantly
     sessionStorage.clear();
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-    // Keep onboarding flag so the user sees role selection, not splash, on next visit
-    // localStorage.removeItem('finova_onboarding_done'); // uncomment to force full onboarding again
     setUser(null);
+
+    // Fire backend logout in background (don't await — no need to block UI)
+    const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
+    if (refreshToken) {
+      authAPI.logout().catch(() => {}); // fire-and-forget
+    }
   };
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';

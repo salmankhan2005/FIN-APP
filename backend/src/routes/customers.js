@@ -133,23 +133,47 @@ router.post('/', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => 
 
     const trimmedName = name?.trim();
     const trimmedPhone = phone?.trim();
-    const cleanEmail = email?.trim() ? email.trim() : null;
+    const cleanEmail = email?.trim() ? email.trim().toLowerCase() : null;
 
-    // Create or find user account for customer (allow sharing User profile if same phone)
+    // Find existing user by phone first
     let user = await prisma.user.findFirst({ where: { phone: trimmedPhone } });
 
+    // If no user by phone, check by email
     if (!user && cleanEmail) {
-      const userByEmail = await prisma.user.findFirst({ where: { email: cleanEmail.toLowerCase() } });
+      const userByEmail = await prisma.user.findFirst({ where: { email: cleanEmail } });
       if (userByEmail) {
-        return res.status(409).json({ success: false, message: 'Email is already registered to another user' });
+        if (userByEmail.role === 'CUSTOMER') {
+          // Reuse existing customer user account
+          user = userByEmail;
+        } else {
+          // Email belongs to an ADMIN or AGENT — don't block, just ignore the email
+          // We'll generate a unique placeholder email for this customer's user account
+          const bcrypt = require('bcryptjs');
+          const passwordHash = await bcrypt.hash(trimmedPhone, 12);
+          user = await prisma.user.create({
+            data: {
+              name: trimmedName,
+              email: `${trimmedPhone}@loanflow.local`,
+              phone: trimmedPhone,
+              passwordHash,
+              role: 'CUSTOMER'
+            },
+          });
+        }
       }
     }
 
     if (!user) {
       const bcrypt = require('bcryptjs');
-      const passwordHash = await bcrypt.hash(trimmedPhone, 12); // default password = phone number
+      const passwordHash = await bcrypt.hash(trimmedPhone, 12);
       user = await prisma.user.create({
-        data: { name: trimmedName, email: cleanEmail ? cleanEmail.toLowerCase() : `${trimmedPhone}@loanflow.local`, phone: trimmedPhone, passwordHash, role: 'CUSTOMER' },
+        data: {
+          name: trimmedName,
+          email: cleanEmail || `${trimmedPhone}@loanflow.local`,
+          phone: trimmedPhone,
+          passwordHash,
+          role: 'CUSTOMER'
+        },
       });
     }
 

@@ -93,7 +93,7 @@ export default function CustomerDetail() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {!isCustomer && (
             /* Credential button — locked for agents once set; always active for admins */
-            customer.userId && isAgent ? (
+            customer.hasCredentials && isAgent ? (
               <button
                 type="button"
                 className="btn btn-outline btn-sm"
@@ -113,10 +113,10 @@ export default function CustomerDetail() {
                   setCredSuccess(null);
                   setShowCredModal(true);
                 }}
-                style={{ gap: 6, borderColor: customer.userId ? '#f59e0b' : '#10b981', color: customer.userId ? '#f59e0b' : '#10b981' }}
-                title={customer.userId ? 'Reset / Update App Credentials' : 'Generate App Credentials'}
+                style={{ gap: 6, borderColor: customer.hasCredentials ? '#f59e0b' : '#10b981', color: customer.hasCredentials ? '#f59e0b' : '#10b981' }}
+                title={customer.hasCredentials ? 'Reset / Update App Credentials' : 'Generate App Credentials'}
               >
-                {customer.userId ? <><Lock size={14} /> Reset Credentials</> : <><KeyRound size={14} /> App Credentials</>}
+                {customer.hasCredentials ? <><Lock size={14} /> Reset Credentials</> : <><KeyRound size={14} /> App Credentials</>}
               </button>
             )
           )}

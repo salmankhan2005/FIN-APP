@@ -149,7 +149,7 @@ router.get('/', authenticate, async (req, res) => {
     
     // if (req.user.role === 'AGENT') where.agentId = req.user.id; // Removed so all agents see all loans
     if (req.user.role === 'CUSTOMER') {
-      const customer = await prisma.customer.findUnique({ where: { userId: req.user.id } });
+      const customer = await prisma.customer.findFirst({ where: { userId: req.user.id } });
       if (customer) where.customerId = customer.id;
     }
 

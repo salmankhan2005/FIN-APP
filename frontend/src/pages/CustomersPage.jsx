@@ -441,7 +441,7 @@ export default function CustomersPage() {
                           <Eye size={15} />
                         </Link>
                         {/* Credential button — locked after first creation unless admin */}
-                        {c.userId ? (
+                        {c.hasCredentials ? (
                           canResetCredentials ? (
                             // Admin: show active reset button
                             <button
@@ -619,7 +619,7 @@ export default function CustomersPage() {
                     <Edit2 size={14} />
                   </button>
                   {/* Credential button — locked after first creation unless admin */}
-                  {c.userId ? (
+                  {c.hasCredentials ? (
                     canResetCredentials ? (
                       <button
                         type="button"

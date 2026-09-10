@@ -24,7 +24,7 @@ router.get('/', authenticate, async (req, res) => {
       where.userId = req.user.id;
     }
 
-    const [customers, total] = await Promise.all([
+    const [customers, total, credentialLogs] = await Promise.all([
       prisma.customer.findMany({
         where,
         skip,
@@ -34,14 +34,20 @@ router.get('/', authenticate, async (req, res) => {
             where: { status: 'ACTIVE' },
             select: { id: true, loanNumber: true, totalPayable: true, status: true },
           },
-          user: { select: { id: true } },
         },
         orderBy: { createdAt: 'desc' },
       }),
       prisma.customer.count({ where }),
+      prisma.auditLog.findMany({
+        where: { action: { in: ['AGENT_CREATED_CUSTOMER_CREDENTIALS', 'ADMIN_SET_CUSTOMER_CREDENTIALS'] } },
+        select: { entityId: true },
+      }),
     ]);
 
-    res.json({ success: true, data: customers, meta: { total, page: parseInt(page), limit: parseInt(limit) } });
+    const credentialSet = new Set(credentialLogs.map(l => l.entityId));
+    const customersWithCreds = customers.map(c => ({ ...c, hasCredentials: credentialSet.has(c.id) }));
+
+    res.json({ success: true, data: customersWithCreds, meta: { total, page: parseInt(page), limit: parseInt(limit) } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -65,7 +71,15 @@ router.get('/:id', authenticate, async (req, res) => {
       },
     });
     if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
-    res.json({ success: true, data: customer });
+
+    const credLog = await prisma.auditLog.findFirst({
+      where: {
+        entityId: customer.id,
+        action: { in: ['AGENT_CREATED_CUSTOMER_CREDENTIALS', 'ADMIN_SET_CUSTOMER_CREDENTIALS'] }
+      },
+      select: { id: true }
+    });
+    res.json({ success: true, data: { ...customer, hasCredentials: !!credLog } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

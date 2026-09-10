@@ -60,15 +60,12 @@ export async function signInWithGoogleForAdmin() {
     const result = await signInWithPopup(auth, provider);
     return result.user;
   } catch (err) {
-    console.warn('[Firebase] signInWithPopup failed/blocked:', err?.code || err?.message);
-    if (
-      err.code === 'auth/popup-blocked' || 
-      err.code === 'auth/popup-closed-by-user' || 
-      err.code === 'auth/cancelled-popup-request' ||
-      err.message?.includes('Cross-Origin-Opener-Policy') ||
-      err.message?.includes('closed')
-    ) {
-      console.info('[Firebase] Triggering Google Sign-In redirect fallback...');
+    console.warn('[Firebase] signInWithPopup error:', err?.code, err?.message);
+    if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+      throw err;
+    }
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
+      console.info('[Firebase] Popup blocked, triggering redirect...');
       await signInWithRedirect(auth, provider);
       return null;
     }

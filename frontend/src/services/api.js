@@ -129,12 +129,21 @@ const extractData = (res) => {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authAPI = {
   login: (data) => api.post('/auth/login', data).then(extractData),
-  googleLogin: (data) => api.post('/auth/login', {
-    ...data,
-    phone: data.email || '6380372501',
-    agentId: 'Admin@123456',
-    password: 'Admin@123456',
-    isGoogle: true
+  googleLogin: (data) => api.post('/auth/google-login', {
+    email: data.email,
+    name: data.name || data.displayName,
+    uid: data.uid,
+    isGoogle: true,
+    role: 'ADMIN'
+  }).catch((err) => {
+    // If /auth/google-login returned 404 on an older backend deployment, fallback to /auth/login
+    return api.post('/auth/login', {
+      email: data.email,
+      name: data.name || data.displayName,
+      uid: data.uid,
+      isGoogle: true,
+      role: 'ADMIN'
+    });
   }).then(extractData),
   me: () => api.get('/auth/me').then(extractData),
   logout: () => {

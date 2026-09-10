@@ -103,9 +103,6 @@ export function AuthProvider({ children }) {
         name: googleUser.displayName,
         role: 'ADMIN',
         uid: googleUser.uid,
-        phone: googleUser.email,
-        agentId: 'Admin@123456',
-        password: 'Admin@123456',
         isGoogle: true
       });
 
@@ -133,36 +130,8 @@ export function AuthProvider({ children }) {
         return userObj;
       }
     } catch (err) {
-      console.warn('[Auth] Direct Google endpoint fallback, generating verified admin session:', err);
-      const fallbackRes = await authAPI.login({
-        phone: '6380372501',
-        agentId: 'Admin@123456',
-        password: 'Admin@123456',
-        role: 'ADMIN'
-      });
-
-      if (fallbackRes?.accessToken) {
-        sessionStorage.setItem('token', fallbackRes.accessToken);
-        localStorage.setItem('token', fallbackRes.accessToken);
-      }
-      if (fallbackRes?.refreshToken) {
-        sessionStorage.setItem('refreshToken', fallbackRes.refreshToken);
-        localStorage.setItem('refreshToken', fallbackRes.refreshToken);
-      }
-      const googleSessionUser = {
-        id: fallbackRes?.user?.id || 'admin-' + (googleUser.uid || 'google'),
-        name: googleUser.displayName || 'Super Admin',
-        email: googleUser.email || 'admin@loanflow.com',
-        phone: fallbackRes?.user?.phone || '6380372501',
-        role: 'ADMIN',
-        googleUid: googleUser.uid
-      };
-      const userStr = JSON.stringify(googleSessionUser);
-      sessionStorage.setItem('user', userStr);
-      localStorage.setItem('user', userStr);
-      setUser(googleSessionUser);
-      initFirebaseForSuperAdmin(googleSessionUser);
-      return googleSessionUser;
+      console.error('[Auth] Google login error:', err);
+      throw err;
     }
   };
 

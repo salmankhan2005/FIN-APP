@@ -7,20 +7,36 @@ const isProduction = typeof window !== 'undefined' &&
   window.location.hostname !== 'localhost' && 
   window.location.hostname !== '127.0.0.1';
 
-// Clear stale localhost URL from localStorage if running on a remote production domain
-if (typeof window !== 'undefined') {
-  const storedUrl = localStorage.getItem('finova_api_url');
-  if (storedUrl && isProduction && (storedUrl.includes('localhost') || storedUrl.includes('127.0.0.1'))) {
-    localStorage.removeItem('finova_api_url');
-  }
-}
-
 const envApiUrl = import.meta.env && import.meta.env.VITE_API_URL;
 const validEnvUrl = envApiUrl && (!isProduction || !envApiUrl.includes('localhost')) ? envApiUrl : null;
 
-const API_URL = (typeof window !== 'undefined' && localStorage.getItem('finova_api_url')) ||
-  validEnvUrl ||
-  (isProduction ? PROD_API_URL : DEV_API_URL);
+// Clean & sanitize stored API URL
+const getCleanApiUrl = () => {
+  if (typeof window === 'undefined') return isProduction ? PROD_API_URL : DEV_API_URL;
+  
+  let stored = localStorage.getItem('finova_api_url');
+  if (stored) {
+    // Sanitize any malformed prefixes like /= or leading slashes/spaces or legacy URLs
+    stored = stored.trim().replace(/^[/=\s]+/, '');
+    if (!stored.startsWith('http://') && !stored.startsWith('https://')) {
+      stored = 'https://' + stored;
+    }
+    if (stored.includes('841v') || (isProduction && (stored.includes('localhost') || stored.includes('127.0.0.1')))) {
+      localStorage.removeItem('finova_api_url');
+      stored = null;
+    }
+  }
+
+  if (stored) return stored;
+
+  if (validEnvUrl && (validEnvUrl.startsWith('http://') || validEnvUrl.startsWith('https://'))) {
+    return validEnvUrl;
+  }
+
+  return isProduction ? PROD_API_URL : DEV_API_URL;
+};
+
+const API_URL = getCleanApiUrl();
 
 const api = axios.create({
   baseURL: API_URL,
@@ -205,5 +221,11 @@ export const notificationsAPI = {
 
 export default api;
 export const updateApiBaseUrl = (url) => {
-  api.defaults.baseURL = url;
+  if (!url) return;
+  let clean = url.trim().replace(/^[/=\s]+/, '');
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+    clean = 'https://' + clean;
+  }
+  api.defaults.baseURL = clean;
+  localStorage.setItem('finova_api_url', clean);
 };

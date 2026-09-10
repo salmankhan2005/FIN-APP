@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
+import { initFirebaseForSuperAdmin } from '../services/firebase';
 
 const AuthContext = createContext(null);
 
@@ -13,7 +14,11 @@ export function AuthProvider({ children }) {
 
     if (token && storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        if (parsedUser?.role === 'ADMIN') {
+          initFirebaseForSuperAdmin(parsedUser);
+        }
       } catch (e) {
         console.error('Failed to parse stored user:', e);
       }
@@ -26,6 +31,9 @@ export function AuthProvider({ children }) {
             const updatedUser = data.user || data;
             setUser(updatedUser);
             localStorage.setItem('user', JSON.stringify(updatedUser));
+            if (updatedUser?.role === 'ADMIN') {
+              initFirebaseForSuperAdmin(updatedUser);
+            }
           }
         })
         .catch((err) => {
@@ -61,6 +69,10 @@ export function AuthProvider({ children }) {
     if (response.user) {
       localStorage.setItem('user', JSON.stringify(response.user));
       setUser(response.user);
+      // Initialize Firebase Analytics ONLY for Super Admin
+      if (response.user.role === 'ADMIN') {
+        initFirebaseForSuperAdmin(response.user);
+      }
     }
     return response.user;
   };

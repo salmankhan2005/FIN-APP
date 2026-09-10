@@ -77,6 +77,30 @@ export function AuthProvider({ children }) {
     return response.user;
   };
 
+  const loginWithGoogle = async (googleUser) => {
+    const response = await authAPI.googleLogin({
+      email: googleUser.email,
+      name: googleUser.displayName,
+      role: 'ADMIN',
+      uid: googleUser.uid
+    });
+    if (response.accessToken) {
+      localStorage.setItem('token', response.accessToken);
+    }
+    if (response.refreshToken) {
+      localStorage.setItem('refreshToken', response.refreshToken);
+    }
+    if (response.user) {
+      localStorage.setItem('user', JSON.stringify(response.user));
+      setUser(response.user);
+      // Initialize Firebase Analytics ONLY for Super Admin
+      if (response.user.role === 'ADMIN') {
+        initFirebaseForSuperAdmin(response.user);
+      }
+    }
+    return response.user;
+  };
+
   const logout = async () => {
     try {
       await authAPI.logout();
@@ -93,10 +117,16 @@ export function AuthProvider({ children }) {
   const isCustomer = user?.role === 'CUSTOMER';
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isSuperAdmin, isAdmin, isAgent, isCustomer }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, logout, isSuperAdmin, isAdmin, isAgent, isCustomer }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

@@ -81,6 +81,7 @@ const extractData = (res) => {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authAPI = {
   login: (data) => api.post('/auth/login', data).then(extractData),
+  googleLogin: (data) => api.post('/auth/google-login', data).then(extractData),
   me: () => api.get('/auth/me').then(extractData),
   logout: () => {
     const refreshToken = localStorage.getItem('refreshToken');

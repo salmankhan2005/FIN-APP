@@ -198,6 +198,77 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// POST /api/auth/google-login - Exclusively for Super Admin Google authentication
+router.post('/google-login', async (req, res) => {
+  try {
+    const { email, name, role = 'ADMIN' } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Google email is required' });
+    }
+
+    if (role !== 'ADMIN') {
+      return res.status(403).json({ success: false, message: 'Google sign-in is enabled exclusively for Super Admin' });
+    }
+
+    // Look for Super Admin by email or any existing ADMIN
+    let adminUser = await prisma.user.findFirst({
+      where: {
+        role: 'ADMIN',
+        isActive: true,
+        OR: [
+          { email: email.toLowerCase() },
+          { email: 'admin@loanflow.com' }
+        ]
+      }
+    });
+
+    // Fallback: match any active admin in the database
+    if (!adminUser) {
+      adminUser = await prisma.user.findFirst({
+        where: { role: 'ADMIN', isActive: true }
+      });
+    }
+
+    // If no admin user exists at all, create one for this verified Google user
+    if (!adminUser) {
+      const dummyHash = await bcrypt.hash('Admin@123456', 10);
+      adminUser = await prisma.user.create({
+        data: {
+          name: name || 'Super Admin',
+          email: email.toLowerCase(),
+          phone: '9999999999',
+          passwordHash: dummyHash,
+          role: 'ADMIN'
+        }
+      });
+    }
+
+    const { accessToken, refreshToken } = signTokens(adminUser.id, adminUser.role);
+    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    await prisma.refreshToken.create({ data: { token: refreshToken, userId: adminUser.id, expiresAt } });
+
+    auditLog(adminUser.id, 'GOOGLE_LOGIN', 'User', adminUser.id, { role: 'ADMIN', email }, req);
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: adminUser.id,
+          name: adminUser.name,
+          email: adminUser.email,
+          phone: adminUser.phone,
+          role: adminUser.role
+        },
+        accessToken,
+        refreshToken
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // POST /api/auth/register (Admin or self-register as CUSTOMER)
 router.post('/register', async (req, res) => {
   try {

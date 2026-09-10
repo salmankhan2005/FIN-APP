@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics, isSupported, logEvent, setUserId } from "firebase/analytics";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -14,6 +15,25 @@ const firebaseConfig = {
 
 let app = null;
 let analytics = null;
+
+/**
+ * Sign In with Google via Firebase Auth popup exclusively for Super Admin
+ */
+export async function signInWithGoogleForAdmin() {
+  let firebaseApp;
+  if (!getApps().length) {
+    firebaseApp = initializeApp(firebaseConfig);
+  } else {
+    firebaseApp = getApp();
+  }
+
+  const auth = getAuth(firebaseApp);
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  const result = await signInWithPopup(auth, provider);
+  return result.user;
+}
 
 /**
  * Initialize Firebase & Analytics strictly for Super Admin sessions only.

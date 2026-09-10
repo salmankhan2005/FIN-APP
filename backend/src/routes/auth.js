@@ -207,48 +207,61 @@ router.post('/google-login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Google email is required' });
     }
 
-    if (role !== 'ADMIN') {
-      return res.status(403).json({ success: false, message: 'Google sign-in is enabled exclusively for Super Admin' });
-    }
+    const cleanEmail = email.trim().toLowerCase();
 
-    // Look for Super Admin by email or any existing ADMIN
+    // 1. Look for Admin with this exact email
     let adminUser = await prisma.user.findFirst({
       where: {
+        email: cleanEmail,
         role: 'ADMIN',
-        isActive: true,
-        OR: [
-          { email: email.toLowerCase() },
-          { email: 'admin@loanflow.com' }
-        ]
       }
     });
 
-    // Fallback: match any active admin in the database
+    // 2. If not found, check if a user with this email exists under another role or create a fresh Admin
     if (!adminUser) {
-      adminUser = await prisma.user.findFirst({
-        where: { role: 'ADMIN', isActive: true }
+      const existingUser = await prisma.user.findFirst({
+        where: { email: cleanEmail }
       });
-    }
 
-    // If no admin user exists at all, create one for this verified Google user
-    if (!adminUser) {
-      const dummyHash = await bcrypt.hash('Admin@123456', 10);
-      adminUser = await prisma.user.create({
-        data: {
-          name: name || 'Super Admin',
-          email: email.toLowerCase(),
-          phone: '9999999999',
-          passwordHash: dummyHash,
-          role: 'ADMIN'
-        }
-      });
+      if (existingUser) {
+        // Upgrade / activate as ADMIN
+        adminUser = await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            role: 'ADMIN',
+            name: name || existingUser.name,
+            isActive: true,
+          }
+        });
+      } else {
+        // Create a new Admin account specifically for this Google user
+        const dummyHash = await bcrypt.hash(Math.random().toString(36) + Date.now(), 12);
+        adminUser = await prisma.user.create({
+          data: {
+            name: name || cleanEmail.split('@')[0],
+            email: cleanEmail,
+            phone: cleanEmail,
+            passwordHash: dummyHash,
+            role: 'ADMIN',
+            isActive: true,
+          }
+        });
+      }
+    } else {
+      // Update name from Google profile if available
+      if (name && adminUser.name !== name) {
+        adminUser = await prisma.user.update({
+          where: { id: adminUser.id },
+          data: { name }
+        });
+      }
     }
 
     const { accessToken, refreshToken } = signTokens(adminUser.id, adminUser.role);
     const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
     await prisma.refreshToken.create({ data: { token: refreshToken, userId: adminUser.id, expiresAt } });
 
-    auditLog(adminUser.id, 'GOOGLE_LOGIN', 'User', adminUser.id, { role: 'ADMIN', email }, req);
+    auditLog(adminUser.id, 'GOOGLE_LOGIN', 'User', adminUser.id, { role: 'ADMIN', email: cleanEmail }, req);
 
     res.json({
       success: true,

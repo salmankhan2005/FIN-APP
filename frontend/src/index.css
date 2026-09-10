@@ -123,6 +123,28 @@ img { max-width: 100%; }
 
 input, select, textarea, button { font-family: inherit; }
 
+/* ─── Recharts Focus & Click Outline Removal ────────────────────────────────── */
+.recharts-responsive-container,
+.recharts-responsive-container *:focus,
+.recharts-responsive-container *:focus-visible,
+.recharts-wrapper,
+.recharts-wrapper *:focus,
+.recharts-wrapper *:focus-visible,
+.recharts-surface,
+.recharts-surface *:focus,
+.recharts-surface *:focus-visible,
+.recharts-layer,
+.recharts-layer *:focus,
+svg:focus,
+svg *:focus,
+svg:focus-visible,
+svg *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
 /* ─── Layout ────────────────────────────────────────────────────────────────── */
 .app-layout {
   display: flex;

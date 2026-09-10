@@ -181,9 +181,9 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div style={{ width: '100%', height: 260, minWidth: 0, position: 'relative' }}>
-              <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={260}>
-                <ComposedChart data={s?.monthlyTrend ? [...s.monthlyTrend] : []} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+            <div style={{ width: '100%', height: 260, minWidth: 0, position: 'relative', outline: 'none', border: 'none' }}>
+              <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={260} style={{ outline: 'none' }}>
+                <ComposedChart data={s?.monthlyTrend ? [...s.monthlyTrend] : []} margin={{ top: 10, right: 10, left: 0, bottom: 5 }} style={{ outline: 'none' }}>
                   <defs>
                     <linearGradient id="colorDisbursed" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>

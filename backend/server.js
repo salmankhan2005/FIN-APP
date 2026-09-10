@@ -67,7 +67,7 @@ app.use('/api/audit',      require('./src/routes/audit'));
 app.use('/api/notifications', require('./src/routes/notifications'));
 
 // Health check
-app.get('/health', (req, res) => res.json({
+app.get(['/health', '/api/health'], (req, res) => res.json({
   status: 'ok',
   app: process.env.APP_NAME || 'Finova',
   version: '2.3.0-penalty-carryforward',

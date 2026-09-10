@@ -42,14 +42,15 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const login = async (phone, agentId) => {
+  const login = async (phone, agentId, role) => {
     const response = await authAPI.login({
       phone,
       email: phone,
       userId: phone,
       username: phone,
       agentId,
-      password: agentId
+      password: agentId,
+      role
     });
     if (response.accessToken) {
       localStorage.setItem('token', response.accessToken);

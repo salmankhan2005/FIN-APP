@@ -167,6 +167,15 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid password or Agent ID' });
     }
 
+    // Role category validation if category is selected on login screen
+    if (req.body.role && matchedUser.role !== req.body.role.toUpperCase()) {
+      const roleName = matchedUser.role === 'ADMIN' ? 'Super Admin' : matchedUser.role === 'AGENT' ? 'Field Agent' : 'Customer';
+      return res.status(403).json({
+        success: false,
+        message: `This account belongs to ${roleName}. Please select the "${roleName}" category tab.`
+      });
+    }
+
     const { accessToken, refreshToken } = signTokens(matchedUser.id, matchedUser.role);
     
     // Save refresh token

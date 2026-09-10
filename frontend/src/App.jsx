@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AppLayout from './components/AppLayout';
@@ -12,23 +12,37 @@ import CollectionPage from './pages/CollectionPage';
 import UsersPage from './pages/UsersPage';
 import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage';
+import LandingPage from './pages/LandingPage';
+import SplashScreen from './components/SplashScreen';
 import NotificationsDashboard from './pages/NotificationsDashboard';
 import ProfitPage from './pages/ProfitPage';
 import CollectionRoutePage from './pages/CollectionRoutePage';
 import PaymentsHistoryPage from './pages/PaymentsHistoryPage';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import ScrollToTop from './components/ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
 function AppRoutes() {
   const { user, loading, isAdmin } = useAuth();
+  const navigate = useNavigate();
+
   if (loading) return <div className="loading-page"><div className="spinner" /><p>Loading...</p></div>;
-  if (!user) return <LoginPage />;
+
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage onBackToHome={() => navigate('/')} />} />
+        <Route path="*" element={<LandingPage onOpenLogin={() => navigate('/login')} />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
+      <Route path="/welcome" element={<LandingPage onOpenLogin={() => navigate('/')} />} />
       <Route path="/" element={<AppLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="customers" element={<CustomersPage />} />
@@ -50,6 +64,10 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem('finova_splash_seen');
+  });
+
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       CapacitorApp.addListener('backButton', ({ canGoBack }) => {
@@ -59,8 +77,14 @@ export default function App() {
     }
   }, []);
 
+  const handleSplashFinish = () => {
+    sessionStorage.setItem('finova_splash_seen', 'true');
+    setShowSplash(false);
+  };
+
   return (
     <BrowserRouter>
+      {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
       <AuthProvider>
         <ScrollToTop />
         <Toaster

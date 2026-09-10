@@ -29,6 +29,11 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, editCusto
   const [showMapPicker, setShowMapPicker] = useState(false);
   const lastLoadedCustomerRef = useRef(null);
 
+  // Phone-based auto-fill state
+  const [existingMatch, setExistingMatch] = useState(null);
+  const [autoFillDismissed, setAutoFillDismissed] = useState(false);
+  const phoneSearchTimer = useRef(null);
+
   // Full form state
   const [form, setForm] = useState({
     name: '',
@@ -124,6 +129,56 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, editCusto
   }, [isOpen, editCustomer, initialTab]);
 
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+
+  // Phone lookup: search existing customers when 10+ digits are typed
+  const handlePhoneChange = (val) => {
+    update('phone', val);
+    setAutoFillDismissed(false);
+    setExistingMatch(null);
+    clearTimeout(phoneSearchTimer.current);
+    const digits = val.replace(/\D/g, '');
+    if (digits.length >= 10 && !editCustomer) {
+      phoneSearchTimer.current = setTimeout(async () => {
+        try {
+          const results = await customersAPI.list({ search: digits, limit: 1 });
+          const match = Array.isArray(results) ? results[0] : results?.data?.[0];
+          if (match && match.phone?.replace(/\D/g, '').includes(digits)) {
+            setExistingMatch(match);
+          }
+        } catch { /* silent */ }
+      }, 500);
+    }
+  };
+
+  // Apply auto-fill from existing match (all fields except name)
+  const handleAutoFill = () => {
+    if (!existingMatch) return;
+    setForm(prev => ({
+      ...prev,
+      phone: existingMatch.phone || prev.phone,
+      email: existingMatch.email || prev.email,
+      address: existingMatch.address || prev.address,
+      city: existingMatch.city || prev.city,
+      idType: existingMatch.idType || prev.idType,
+      idNumber: existingMatch.idNumber || prev.idNumber,
+      idProofUrl: existingMatch.idProofUrl || prev.idProofUrl,
+      photoUrl: existingMatch.photoUrl || prev.photoUrl,
+      notificationPref: existingMatch.notificationPref || prev.notificationPref,
+      latitude: existingMatch.latitude || prev.latitude,
+      longitude: existingMatch.longitude || prev.longitude,
+      jaminName: existingMatch.jaminName || prev.jaminName,
+      jaminPhone: existingMatch.jaminPhone || prev.jaminPhone,
+      jaminAddress: existingMatch.jaminAddress || prev.jaminAddress,
+      jaminRelationship: existingMatch.jaminRelationship || prev.jaminRelationship,
+      jaminIdType: existingMatch.jaminIdType || prev.jaminIdType,
+      jaminIdNumber: existingMatch.jaminIdNumber || prev.jaminIdNumber,
+      jaminPhotoUrl: existingMatch.jaminPhotoUrl || prev.jaminPhotoUrl,
+      jaminIdProofUrl: existingMatch.jaminIdProofUrl || prev.jaminIdProofUrl,
+    }));
+    setAutoFillDismissed(true);
+    setExistingMatch(null);
+    toast.success('Details pre-filled from existing record! Update the name and verify other fields.');
+  };
 
   // Camera Management
   const startCamera = async (field, mode = facingMode) => {
@@ -603,9 +658,54 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, editCusto
                       className="form-input"
                       placeholder="10-digit mobile"
                       value={form.phone}
-                      onChange={e => update('phone', e.target.value)}
+                      onChange={e => handlePhoneChange(e.target.value)}
                       required
                     />
+                    {/* Existing customer match banner */}
+                    {existingMatch && !autoFillDismissed && (
+                      <div style={{
+                        marginTop: 8, padding: '10px 14px', borderRadius: 10,
+                        background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(249,115,22,0.08))',
+                        border: '1px solid rgba(245,158,11,0.4)',
+                        display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap'
+                      }}>
+                        <div style={{ fontSize: 18, flexShrink: 0 }}>⚠️</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: '#b45309', marginBottom: 3 }}>
+                            Existing record found with this phone number
+                          </div>
+                          <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.5 }}>
+                            <strong>Existing name:</strong> {existingMatch.name} &nbsp;|&nbsp;
+                            {existingMatch.address && <><strong>Address:</strong> {existingMatch.address.substring(0,40)}{existingMatch.address.length > 40 ? '…' : ''} &nbsp;|&nbsp;</>}
+                            {existingMatch.idType && <><strong>ID:</strong> {existingMatch.idType} – {existingMatch.idNumber}</>}
+                          </div>
+                          <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={handleAutoFill}
+                              style={{
+                                padding: '5px 12px', borderRadius: 8, border: 'none',
+                                background: '#f59e0b', color: '#fff', fontWeight: 700,
+                                fontSize: 12, cursor: 'pointer'
+                              }}
+                            >
+                              ✓ Pre-fill Address, ID & Jamin Details
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setAutoFillDismissed(true); setExistingMatch(null); }}
+                              style={{
+                                padding: '5px 12px', borderRadius: 8, border: '1px solid #d97706',
+                                background: 'transparent', color: '#b45309', fontWeight: 600,
+                                fontSize: 12, cursor: 'pointer'
+                              }}
+                            >
+                              ✕ Ignore
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

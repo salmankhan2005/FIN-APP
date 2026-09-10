@@ -9,13 +9,18 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    // Check current tab's sessionStorage first, then fallback to localStorage
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    const storedUser = sessionStorage.getItem('user') || localStorage.getItem('user');
 
     if (token && storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
+        // Lock this tab's session explicitly
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('user', storedUser);
+
         if (parsedUser?.role === 'ADMIN') {
           initFirebaseForSuperAdmin(parsedUser);
         }
@@ -30,7 +35,9 @@ export function AuthProvider({ children }) {
           if (data) {
             const updatedUser = data.user || data;
             setUser(updatedUser);
-            localStorage.setItem('user', JSON.stringify(updatedUser));
+            const userStr = JSON.stringify(updatedUser);
+            sessionStorage.setItem('user', userStr);
+            localStorage.setItem('user', userStr);
             if (updatedUser?.role === 'ADMIN') {
               initFirebaseForSuperAdmin(updatedUser);
             }
@@ -39,6 +46,9 @@ export function AuthProvider({ children }) {
         .catch((err) => {
           // ONLY clear session if server explicitly rejects token with HTTP 401
           if (err.response?.status === 401) {
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('refreshToken');
+            sessionStorage.removeItem('user');
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
             localStorage.removeItem('user');
@@ -61,13 +71,17 @@ export function AuthProvider({ children }) {
       role
     });
     if (response.accessToken) {
+      sessionStorage.setItem('token', response.accessToken);
       localStorage.setItem('token', response.accessToken);
     }
     if (response.refreshToken) {
+      sessionStorage.setItem('refreshToken', response.refreshToken);
       localStorage.setItem('refreshToken', response.refreshToken);
     }
     if (response.user) {
-      localStorage.setItem('user', JSON.stringify(response.user));
+      const userStr = JSON.stringify(response.user);
+      sessionStorage.setItem('user', userStr);
+      localStorage.setItem('user', userStr);
       setUser(response.user);
       // Initialize Firebase Analytics ONLY for Super Admin
       if (response.user.role === 'ADMIN') {
@@ -85,13 +99,17 @@ export function AuthProvider({ children }) {
       uid: googleUser.uid
     });
     if (response.accessToken) {
+      sessionStorage.setItem('token', response.accessToken);
       localStorage.setItem('token', response.accessToken);
     }
     if (response.refreshToken) {
+      sessionStorage.setItem('refreshToken', response.refreshToken);
       localStorage.setItem('refreshToken', response.refreshToken);
     }
     if (response.user) {
-      localStorage.setItem('user', JSON.stringify(response.user));
+      const userStr = JSON.stringify(response.user);
+      sessionStorage.setItem('user', userStr);
+      localStorage.setItem('user', userStr);
       setUser(response.user);
       // Initialize Firebase Analytics ONLY for Super Admin
       if (response.user.role === 'ADMIN') {
@@ -105,9 +123,22 @@ export function AuthProvider({ children }) {
     try {
       await authAPI.logout();
     } catch (e) {}
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('user');
+    // Only remove from localStorage if it belongs to current tab's user
+    try {
+      const localUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!localUser.id || localUser.id === user?.id) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+      }
+    } catch {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+    }
     setUser(null);
   };
 

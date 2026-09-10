@@ -14,11 +14,22 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
+// Helper to retrieve auth tokens isolated by session/tab
+export const getAuthToken = () => {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem('token') || localStorage.getItem('token');
+};
+
+export const getAuthRefreshToken = () => {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
+};
+
 // Interceptor to add JWT token and tunnel bypass header
 api.interceptors.request.use((config) => {
   config.headers['Bypass-Tunnel-Reminder'] = 'true'; // Bypass localtunnel splash screen
   
-  const token = localStorage.getItem('token');
+  const token = getAuthToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -34,7 +45,7 @@ api.interceptors.response.use(
     // If error is 401 and we haven't retried yet, and it's not the refresh or login endpoint itself
     if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/refresh') && !originalRequest.url.includes('/auth/login')) {
       originalRequest._retry = true;
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = getAuthRefreshToken();
       
       if (refreshToken) {
         try {
@@ -42,8 +53,10 @@ api.interceptors.response.use(
           const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
           
           if (res.data?.success && res.data?.data?.accessToken) {
+            sessionStorage.setItem('token', res.data.data.accessToken);
             localStorage.setItem('token', res.data.data.accessToken);
             if (res.data.data.refreshToken) {
+              sessionStorage.setItem('refreshToken', res.data.data.refreshToken);
               localStorage.setItem('refreshToken', res.data.data.refreshToken);
             }
             
@@ -52,11 +65,13 @@ api.interceptors.response.use(
             return api(originalRequest);
           }
         } catch (refreshError) {
-          // If refresh fails, tokens are fully dead. 
+          // If refresh fails, tokens are dead
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('refreshToken');
+          sessionStorage.removeItem('user');
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
-          // In a real app we might force reload, but Context will pick it up or require manual login next time
           window.location.reload(); 
         }
       }
@@ -84,9 +99,12 @@ export const authAPI = {
   googleLogin: (data) => api.post('/auth/google-login', data).then(extractData),
   me: () => api.get('/auth/me').then(extractData),
   logout: () => {
-    const refreshToken = localStorage.getItem('refreshToken');
+    const refreshToken = getAuthRefreshToken();
     const promise = refreshToken ? api.post('/auth/logout', { refreshToken }) : Promise.resolve();
     
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('user');
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');

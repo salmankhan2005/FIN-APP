@@ -130,11 +130,10 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, editCusto
 
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
-  // Phone lookup: search existing customers when 10+ digits are typed
+  // Phone lookup: search existing customers when 10+ digits are typed, auto-prefill details immediately without touching name
   const handlePhoneChange = (val) => {
     update('phone', val);
     setAutoFillDismissed(false);
-    setExistingMatch(null);
     clearTimeout(phoneSearchTimer.current);
     const digits = val.replace(/\D/g, '');
     if (digits.length >= 10 && !editCustomer) {
@@ -144,40 +143,100 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, editCusto
           const match = Array.isArray(results) ? results[0] : results?.data?.[0];
           if (match && match.phone?.replace(/\D/g, '').includes(digits)) {
             setExistingMatch(match);
+            // Immediately prefill all details without touching the customer's name
+            setForm(prev => ({
+              ...prev,
+              phone: val,
+              email: match.email || prev.email,
+              address: match.address || prev.address,
+              city: match.city || prev.city,
+              idType: match.idType || prev.idType,
+              idNumber: match.idNumber || prev.idNumber,
+              idProofUrl: match.idProofUrl || prev.idProofUrl,
+              photoUrl: match.photoUrl || prev.photoUrl,
+              notificationPref: match.notificationPref || prev.notificationPref,
+              latitude: match.latitude || prev.latitude,
+              longitude: match.longitude || prev.longitude,
+              jaminName: match.jaminName || prev.jaminName,
+              jaminPhone: match.jaminPhone || prev.jaminPhone,
+              jaminAddress: match.jaminAddress || prev.jaminAddress,
+              jaminRelationship: match.jaminRelationship || prev.jaminRelationship,
+              jaminIdType: match.jaminIdType || prev.jaminIdType,
+              jaminIdNumber: match.jaminIdNumber || prev.jaminIdNumber,
+              jaminPhotoUrl: match.jaminPhotoUrl || prev.jaminPhotoUrl,
+              jaminIdProofUrl: match.jaminIdProofUrl || prev.jaminIdProofUrl,
+            }));
+            toast.success(`Existing details found & pre-filled! Address, ID & Jamin ready.`);
           }
         } catch { /* silent */ }
-      }, 500);
+      }, 400);
     }
   };
 
-  // Apply auto-fill from existing match (all fields except name)
-  const handleAutoFill = () => {
-    if (!existingMatch) return;
+  // ID Number lookup: search if 8+ characters typed and not already matched
+  const handleIdNumberChange = (val) => {
+    update('idNumber', val);
+    if (!editCustomer && val.trim().length >= 8 && !existingMatch) {
+      clearTimeout(phoneSearchTimer.current);
+      phoneSearchTimer.current = setTimeout(async () => {
+        try {
+          const results = await customersAPI.list({ search: val.trim(), limit: 1 });
+          const match = Array.isArray(results) ? results[0] : results?.data?.[0];
+          if (match && match.idNumber?.toLowerCase() === val.trim().toLowerCase()) {
+            setExistingMatch(match);
+            setForm(prev => ({
+              ...prev,
+              phone: match.phone || prev.phone,
+              email: match.email || prev.email,
+              address: match.address || prev.address,
+              city: match.city || prev.city,
+              idType: match.idType || prev.idType,
+              idNumber: val,
+              idProofUrl: match.idProofUrl || prev.idProofUrl,
+              photoUrl: match.photoUrl || prev.photoUrl,
+              notificationPref: match.notificationPref || prev.notificationPref,
+              latitude: match.latitude || prev.latitude,
+              longitude: match.longitude || prev.longitude,
+              jaminName: match.jaminName || prev.jaminName,
+              jaminPhone: match.jaminPhone || prev.jaminPhone,
+              jaminAddress: match.jaminAddress || prev.jaminAddress,
+              jaminRelationship: match.jaminRelationship || prev.jaminRelationship,
+              jaminIdType: match.jaminIdType || prev.jaminIdType,
+              jaminIdNumber: match.jaminIdNumber || prev.jaminIdNumber,
+              jaminPhotoUrl: match.jaminPhotoUrl || prev.jaminPhotoUrl,
+              jaminIdProofUrl: match.jaminIdProofUrl || prev.jaminIdProofUrl,
+            }));
+            toast.success(`Existing record matched by ID! Details pre-filled & ready.`);
+          }
+        } catch { /* silent */ }
+      }, 400);
+    }
+  };
+
+  // Clear auto-filled details if user wants a clean slate
+  const handleClearPreFilled = () => {
     setForm(prev => ({
       ...prev,
-      phone: existingMatch.phone || prev.phone,
-      email: existingMatch.email || prev.email,
-      address: existingMatch.address || prev.address,
-      city: existingMatch.city || prev.city,
-      idType: existingMatch.idType || prev.idType,
-      idNumber: existingMatch.idNumber || prev.idNumber,
-      idProofUrl: existingMatch.idProofUrl || prev.idProofUrl,
-      photoUrl: existingMatch.photoUrl || prev.photoUrl,
-      notificationPref: existingMatch.notificationPref || prev.notificationPref,
-      latitude: existingMatch.latitude || prev.latitude,
-      longitude: existingMatch.longitude || prev.longitude,
-      jaminName: existingMatch.jaminName || prev.jaminName,
-      jaminPhone: existingMatch.jaminPhone || prev.jaminPhone,
-      jaminAddress: existingMatch.jaminAddress || prev.jaminAddress,
-      jaminRelationship: existingMatch.jaminRelationship || prev.jaminRelationship,
-      jaminIdType: existingMatch.jaminIdType || prev.jaminIdType,
-      jaminIdNumber: existingMatch.jaminIdNumber || prev.jaminIdNumber,
-      jaminPhotoUrl: existingMatch.jaminPhotoUrl || prev.jaminPhotoUrl,
-      jaminIdProofUrl: existingMatch.jaminIdProofUrl || prev.jaminIdProofUrl,
+      email: '',
+      address: '',
+      city: '',
+      idNumber: '',
+      idProofUrl: '',
+      photoUrl: '',
+      latitude: null,
+      longitude: null,
+      jaminName: '',
+      jaminPhone: '',
+      jaminAddress: '',
+      jaminRelationship: 'Friend (நண்பர்)',
+      jaminIdType: 'AADHAR',
+      jaminIdNumber: '',
+      jaminPhotoUrl: '',
+      jaminIdProofUrl: '',
     }));
     setAutoFillDismissed(true);
     setExistingMatch(null);
-    toast.success('Details pre-filled from existing record! Update the name and verify other fields.');
+    toast('Pre-filled details cleared', { icon: 'ℹ️' });
   };
 
   // Camera Management
@@ -665,42 +724,40 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, editCusto
                     {existingMatch && !autoFillDismissed && (
                       <div style={{
                         marginTop: 8, padding: '10px 14px', borderRadius: 10,
-                        background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(249,115,22,0.08))',
-                        border: '1px solid rgba(245,158,11,0.4)',
+                        background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(245,158,11,0.08))',
+                        border: '1px solid rgba(16,185,129,0.4)',
                         display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap'
                       }}>
-                        <div style={{ fontSize: 18, flexShrink: 0 }}>⚠️</div>
+                        <div style={{ fontSize: 18, flexShrink: 0 }}>⚡</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: '#b45309', marginBottom: 3 }}>
-                            Existing record found with this phone number
+                          <div style={{ fontWeight: 700, fontSize: 13, color: '#047857', marginBottom: 3 }}>
+                            Existing record found for "{existingMatch.name}" — Details Pre-filled &amp; Ready!
                           </div>
-                          <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.5 }}>
-                            <strong>Existing name:</strong> {existingMatch.name} &nbsp;|&nbsp;
-                            {existingMatch.address && <><strong>Address:</strong> {existingMatch.address.substring(0,40)}{existingMatch.address.length > 40 ? '…' : ''} &nbsp;|&nbsp;</>}
-                            {existingMatch.idType && <><strong>ID:</strong> {existingMatch.idType} – {existingMatch.idNumber}</>}
+                          <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.5 }}>
+                            Address, ID ({existingMatch.idType || 'ID'}), and Jamin guarantor details have been auto-filled. You only need to verify and enter the Customer Name.
                           </div>
                           <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             <button
                               type="button"
-                              onClick={handleAutoFill}
+                              onClick={() => setAutoFillDismissed(true)}
                               style={{
                                 padding: '5px 12px', borderRadius: 8, border: 'none',
-                                background: '#f59e0b', color: '#fff', fontWeight: 700,
+                                background: '#10b981', color: '#fff', fontWeight: 700,
                                 fontSize: 12, cursor: 'pointer'
                               }}
                             >
-                              ✓ Pre-fill Address, ID & Jamin Details
+                              ✓ Details Ready (Keep)
                             </button>
                             <button
                               type="button"
-                              onClick={() => { setAutoFillDismissed(true); setExistingMatch(null); }}
+                              onClick={handleClearPreFilled}
                               style={{
                                 padding: '5px 12px', borderRadius: 8, border: '1px solid #d97706',
                                 background: 'transparent', color: '#b45309', fontWeight: 600,
                                 fontSize: 12, cursor: 'pointer'
                               }}
                             >
-                              ✕ Ignore
+                              ✕ Clear Pre-filled Data
                             </button>
                           </div>
                         </div>
@@ -769,7 +826,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, editCusto
                       className="form-input"
                       placeholder={`Enter ${form.idType} Number`}
                       value={form.idNumber}
-                      onChange={e => update('idNumber', e.target.value)}
+                      onChange={e => handleIdNumberChange(e.target.value)}
                       required
                     />
                   </div>

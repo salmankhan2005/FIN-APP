@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { customersAPI } from '../services/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 import {
   KeyRound, Sparkles, Send, CheckCircle2, ShieldCheck,
   Phone, Lock, User, Search, Smartphone, RefreshCw,
@@ -9,11 +10,17 @@ import {
 import { Link } from 'react-router-dom';
 
 export default function AgentCustomerCredentialSection({ preselectedCustomerId = null }) {
+  const { user } = useAuth();
+  const isAgent = user?.role === 'AGENT';
+  const isAdmin = user?.role === 'ADMIN';
+
   const [customers, setCustomers] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  const isLockedForAgent = isAgent && !!selectedCustomer?.hasCredentials;
 
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -56,6 +63,10 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
     e.preventDefault();
     if (!selectedCustomer) {
       toast.error('Please select a customer first');
+      return;
+    }
+    if (isLockedForAgent) {
+      toast.error(`Credentials already exist for ${selectedCustomer.name}. Only Super Admin can reset them.`);
       return;
     }
     if (!password || password.trim().length < 4) {
@@ -331,6 +342,56 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
       ) : (
         /* Form Section */
         <form onSubmit={handleSaveCredentials}>
+          {/* Locked Status Banner for Field Agents */}
+          {isLockedForAgent && (
+            <div style={{
+              marginBottom: 16,
+              padding: '12px 16px',
+              borderRadius: 12,
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(245, 158, 11, 0.08))',
+              border: '1.5px solid rgba(239, 68, 68, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(239, 68, 68, 0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#dc2626', flexShrink: 0
+              }}>
+                <Lock size={18} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#b91c1c' }}>
+                  Credentials Already Created (Locked for Field Agent)
+                </div>
+                <div style={{ fontSize: 12, color: '#7f1d1d', marginTop: 2 }}>
+                  Login credentials have already been configured for {selectedCustomer.name}. As a Field Agent, you cannot recreate credentials for this customer. Only Super Admin has permission to reset or update them.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Admin Reset Notice */}
+          {!isLockedForAgent && selectedCustomer?.hasCredentials && isAdmin && (
+            <div style={{
+              marginBottom: 16,
+              padding: '12px 16px',
+              borderRadius: 12,
+              background: 'rgba(245, 158, 11, 0.08)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12
+            }}>
+              <RefreshCw size={18} color="#d97706" style={{ flexShrink: 0 }} />
+              <div style={{ fontSize: 12, color: '#92400e' }}>
+                <strong>Super Admin Mode:</strong> This customer already has active credentials. You can set a new password below to reset their access.
+              </div>
+            </div>
+          )}
+
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -356,8 +417,8 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '12px 14px',
-                  background: 'rgba(16, 185, 129, 0.08)',
-                  border: '1.5px solid #10b981',
+                  background: isLockedForAgent ? 'rgba(239, 68, 68, 0.04)' : 'rgba(16, 185, 129, 0.08)',
+                  border: isLockedForAgent ? '1.5px solid rgba(239, 68, 68, 0.4)' : '1.5px solid #10b981',
                   borderRadius: '12px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -365,7 +426,7 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
                       width: '38px',
                       height: '38px',
                       borderRadius: '50%',
-                      background: '#10b981',
+                      background: isLockedForAgent ? '#ef4444' : '#10b981',
                       color: '#ffffff',
                       display: 'flex',
                       alignItems: 'center',
@@ -376,8 +437,23 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
                       {selectedCustomer.name?.charAt(0)?.toUpperCase()}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary, #0f172a)' }}>
-                        {selectedCustomer.name}
+                      <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary, #0f172a)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span>{selectedCustomer.name}</span>
+                        {selectedCustomer.hasCredentials && (
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            background: isLockedForAgent ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                            color: isLockedForAgent ? '#dc2626' : '#d97706',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3
+                          }}>
+                            <Lock size={10} /> {isLockedForAgent ? 'Locked (Already Set)' : 'Active (Admin Can Reset)'}
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)' }}>
                         📱 {selectedCustomer.phone}
@@ -487,18 +563,35 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
                                   📱 {c.phone}
                                 </div>
                               </div>
-                              {c.loans?.length > 0 && (
-                                <span style={{
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  background: 'rgba(16, 185, 129, 0.12)',
-                                  color: '#059669',
-                                  padding: '2px 6px',
-                                  borderRadius: '6px'
-                                }}>
-                                  {c.loans.length} Loan{c.loans.length > 1 ? 's' : ''}
-                                </span>
-                              )}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {c.hasCredentials && (
+                                  <span style={{
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    background: isAgent ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.12)',
+                                    color: isAgent ? '#dc2626' : '#d97706',
+                                    padding: '2px 6px',
+                                    borderRadius: '6px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3
+                                  }}>
+                                    <Lock size={10} /> {isAgent ? 'Locked' : 'Has Credentials'}
+                                  </span>
+                                )}
+                                {c.loans?.length > 0 && (
+                                  <span style={{
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    background: 'rgba(16, 185, 129, 0.12)',
+                                    color: '#059669',
+                                    padding: '2px 6px',
+                                    borderRadius: '6px'
+                                  }}>
+                                    {c.loans.length} Loan{c.loans.length > 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           ))
                         )}
@@ -528,11 +621,12 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  background: selectedCustomer ? 'var(--bg-primary, #f8fafc)' : 'rgba(0,0,0,0.02)',
+                  background: selectedCustomer && !isLockedForAgent ? 'var(--bg-primary, #f8fafc)' : 'rgba(0,0,0,0.02)',
                   border: '1.5px solid var(--border-default, #e2e8f0)',
                   borderRadius: '12px',
                   padding: '0 12px',
-                  height: '44px'
+                  height: '44px',
+                  opacity: isLockedForAgent ? 0.6 : 1
                 }}>
                   <Phone size={16} color="var(--text-muted, #64748b)" style={{ marginRight: '8px', flexShrink: 0 }} />
                   <input
@@ -540,7 +634,7 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
                     placeholder="e.g. 9876543210"
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
-                    disabled={!selectedCustomer}
+                    disabled={!selectedCustomer || isLockedForAgent}
                     required
                     style={{
                       width: '100%',
@@ -568,7 +662,7 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
                   <button
                     type="button"
                     onClick={handleGeneratePin}
-                    disabled={!selectedCustomer}
+                    disabled={!selectedCustomer || isLockedForAgent}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -580,8 +674,8 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
                       padding: '3px 8px',
                       fontSize: '11px',
                       fontWeight: 700,
-                      cursor: selectedCustomer ? 'pointer' : 'not-allowed',
-                      opacity: selectedCustomer ? 1 : 0.5
+                      cursor: selectedCustomer && !isLockedForAgent ? 'pointer' : 'not-allowed',
+                      opacity: selectedCustomer && !isLockedForAgent ? 1 : 0.5
                     }}
                   >
                     <Sparkles size={12} /> Auto-Generate PIN
@@ -591,20 +685,21 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  background: selectedCustomer ? 'var(--bg-primary, #f8fafc)' : 'rgba(0,0,0,0.02)',
+                  background: selectedCustomer && !isLockedForAgent ? 'var(--bg-primary, #f8fafc)' : 'rgba(0,0,0,0.02)',
                   border: '1.5px solid var(--border-default, #e2e8f0)',
                   borderRadius: '12px',
                   padding: '0 12px',
-                  height: '44px'
+                  height: '44px',
+                  opacity: isLockedForAgent ? 0.6 : 1
                 }}>
                   <Lock size={16} color="var(--text-muted, #64748b)" style={{ marginRight: '8px', flexShrink: 0 }} />
                   <input
                     type="text"
-                    placeholder="Enter custom password or click Auto-Generate"
+                    placeholder={isLockedForAgent ? "Credentials locked — only Admin can reset" : "Enter custom password or click Auto-Generate"}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    disabled={!selectedCustomer}
-                    required
+                    disabled={!selectedCustomer || isLockedForAgent}
+                    required={!isLockedForAgent}
                     style={{
                       width: '100%',
                       border: 'none',
@@ -632,7 +727,9 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
             borderTop: '1px solid var(--border-subtle, rgba(0,0,0,0.06))'
           }}>
             <div style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)' }}>
-              {selectedCustomer ? (
+              {isLockedForAgent ? (
+                <span style={{ color: '#dc2626', fontWeight: 600 }}>🔒 Credentials already created for {selectedCustomer.name} (Admin permission required to change)</span>
+              ) : selectedCustomer ? (
                 <span>Configuring access for <strong>{selectedCustomer.name}</strong></span>
               ) : (
                 <span>⚠️ Please select a customer above to activate credential creation</span>
@@ -641,25 +738,37 @@ export default function AgentCustomerCredentialSection({ preselectedCustomerId =
 
             <button
               type="submit"
-              disabled={!selectedCustomer || submitting}
+              disabled={!selectedCustomer || submitting || isLockedForAgent}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: selectedCustomer ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'rgba(0,0,0,0.1)',
+                background: isLockedForAgent
+                  ? '#9ca3af'
+                  : selectedCustomer
+                    ? (selectedCustomer.hasCredentials && isAdmin
+                        ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                        : 'linear-gradient(135deg, #10b981 0%, #059669 100%)')
+                    : 'rgba(0,0,0,0.1)',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '10px',
                 padding: '11px 22px',
                 fontSize: '13px',
                 fontWeight: 700,
-                cursor: selectedCustomer && !submitting ? 'pointer' : 'not-allowed',
-                boxShadow: selectedCustomer ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
-                transition: 'all 0.2s'
+                cursor: selectedCustomer && !submitting && !isLockedForAgent ? 'pointer' : 'not-allowed',
+                boxShadow: selectedCustomer && !isLockedForAgent ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
+                transition: 'all 0.2s',
+                opacity: isLockedForAgent ? 0.6 : 1
               }}
             >
-              <KeyRound size={16} />
-              {submitting ? 'Setting Credentials...' : 'Generate & Notify Super Admin'}
+              {isLockedForAgent ? (
+                <><Lock size={16} /> Locked (Admin Only)</>
+              ) : selectedCustomer?.hasCredentials && isAdmin ? (
+                <><RefreshCw size={16} /> {submitting ? 'Resetting...' : 'Reset Credentials'}</>
+              ) : (
+                <><KeyRound size={16} /> {submitting ? 'Setting Credentials...' : 'Generate & Notify Super Admin'}</>
+              )}
             </button>
           </div>
         </form>

@@ -173,25 +173,44 @@ export default function CustomerDetail() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setCredPhone(customer.phone);
-                setCredPassword('');
-                setCredSuccess(null);
-                setShowCredModal(true);
-              }}
-              className="btn btn-primary btn-sm"
-              style={{
-                gap: 6,
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
-              }}
-            >
-              <KeyRound size={14} />
-              <span>Generate / Set App Credentials</span>
-            </button>
+            {customer.hasCredentials && isAgent ? (
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                disabled
+                style={{
+                  gap: 6,
+                  borderColor: '#9ca3af',
+                  color: '#9ca3af',
+                  opacity: 0.6,
+                  cursor: 'not-allowed'
+                }}
+                title="Credentials already set — only Admin can reset"
+              >
+                <Lock size={14} />
+                <span>Credentials Active (Locked)</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setCredPhone(customer.phone);
+                  setCredPassword('');
+                  setCredSuccess(null);
+                  setShowCredModal(true);
+                }}
+                className="btn btn-primary btn-sm"
+                style={{
+                  gap: 6,
+                  background: customer.hasCredentials ? '#f59e0b' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  border: 'none',
+                  boxShadow: customer.hasCredentials ? '0 2px 8px rgba(245, 158, 11, 0.3)' : '0 2px 8px rgba(16, 185, 129, 0.3)'
+                }}
+              >
+                {customer.hasCredentials ? <RefreshCw size={14} /> : <KeyRound size={14} />}
+                <span>{customer.hasCredentials ? 'Reset App Credentials' : 'Generate / Set App Credentials'}</span>
+              </button>
+            )}
           </div>
         </div>
       )}

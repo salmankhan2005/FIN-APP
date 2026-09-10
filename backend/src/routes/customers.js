@@ -297,12 +297,21 @@ router.post('/:id/credentials', authenticate, authorize('ADMIN', 'AGENT'), async
     const isAgent = req.user.role === 'AGENT';
 
     // Agents can only create credentials ONCE per customer.
-    // If a user account already exists for this customer, block the agent.
-    if (isAgent && customer.userId) {
-      return res.status(403).json({
-        success: false,
-        message: `Credentials already exist for ${customer.name}. Only an Admin can reset them.`
+    // If credentials were created previously (logged in auditLog), block the agent.
+    if (isAgent) {
+      const existingCredLog = await prisma.auditLog.findFirst({
+        where: {
+          entityId: customer.id,
+          action: { in: ['AGENT_CREATED_CUSTOMER_CREDENTIALS', 'ADMIN_SET_CUSTOMER_CREDENTIALS'] }
+        },
+        select: { id: true }
       });
+      if (existingCredLog) {
+        return res.status(403).json({
+          success: false,
+          message: `Credentials already exist for ${customer.name}. Only an Admin can reset them.`
+        });
+      }
     }
 
     const bcrypt = require('bcryptjs');

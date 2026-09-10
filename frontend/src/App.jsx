@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AppLayout from './components/AppLayout';
@@ -32,20 +32,29 @@ const STEP_ROLE = 'role';
 const STEP_LOGIN = 'login';
 const STEP_APP = 'app';
 
+function LoadingFallback() {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--bg-app, #f8fafc)'
+    }}>
+      <div className="spinner" style={{ width: 40, height: 40 }} />
+    </div>
+  );
+}
+
 function AuthenticatedApp() {
   const { user, loading, isAdmin } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="loading-page">
-        <div className="spinner" />
-        <p>Loading...</p>
-      </div>
-    );
-  }
+  if (loading) return <LoadingFallback />;
 
-  // If not authenticated, show nothing (App manages onboarding/login overlay)
-  if (!user) return null;
+  // If not authenticated, show a spinner instead of blank screen
+  // (OnboardingGate will redirect to login shortly via useEffect)
+  if (!user) return <LoadingFallback />;
 
   return (
     <Routes>
@@ -103,7 +112,7 @@ function OnboardingGate() {
       {step === STEP_ROLE && (
         <RoleSelectionPage
           onSelectRole={(role) => { setSelectedRole(role); setStep(STEP_LOGIN); }}
-          onBack={step === STEP_ROLE && !sessionStorage.getItem('finova_onboarding_done')
+          onBack={step === STEP_ROLE && !sessionStorage.getItem('finova_onboarding_done') && !localStorage.getItem('finova_onboarding_done')
             ? () => setStep(STEP_ONBOARDING)
             : null}
         />
@@ -115,8 +124,11 @@ function OnboardingGate() {
         />
       )}
 
-      {/* Authenticated app is always rendered underneath so auth context works */}
+      {/* Authenticated app */}
       {step === STEP_APP && <AuthenticatedApp />}
+
+      {/* Catch-all: never show blank. This handles split-second transitions */}
+      {!step && <LoadingFallback />}
     </>
   );
 }

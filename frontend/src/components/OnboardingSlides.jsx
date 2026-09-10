@@ -2,20 +2,20 @@ import React, { useState, useRef } from 'react';
 
 const slides = [
   {
-    title: 'Connect your\nbank accounts',
-    desc: 'Linking your bank accounts is quick and easy. This will allow you to track your spending and keep an eye on your finances in one place.',
+    title: 'Smart Financial\nManagement',
+    desc: 'Effortlessly manage loans, monitor collections, and keep complete control of your finances in one secure place.',
     color: '#2563eb',
     image: '/onboard1.jpg',
   },
   {
-    title: 'Set your\nfinancial goals',
-    desc: "Whether you're saving for a rainy day, a new car, or a dream vacation, we're here to help you reach your financial goals.",
+    title: 'Track Growth &\nSet Daily Goals',
+    desc: "Monitor your collection targets, track real-time cash flow, and achieve your financial milestones with ease.",
     color: '#2563eb',
     image: '/onboard2.jpg',
   },
   {
-    title: 'Explore our\nfeatures',
-    desc: 'Our app offers a variety of features, including budgeting tools, investment tracking, and financial insights.',
+    title: 'Instant Passbook\n& Smart Reports',
+    desc: 'Get real-time payment receipts, clear interest breakdowns, and automated collection route tracking on the go.',
     color: '#2563eb',
     image: '/onboard3.jpg',
   },

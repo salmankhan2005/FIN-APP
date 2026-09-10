@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 // GET /api/reports/defaulters
 router.get('/defaulters', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => {
   try {
-    await syncOverdueStatus(prisma);
+    syncOverdueStatus(prisma).catch(err => console.error('syncOverdueStatus error:', err));
 
     const defaulters = await prisma.repayment.findMany({
       where: { status: 'OVERDUE' },

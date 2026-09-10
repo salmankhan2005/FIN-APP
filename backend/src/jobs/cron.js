@@ -78,6 +78,8 @@ async function processReminders() {
 
 const axios = require('axios');
 
+const { syncOverdueStatus } = require('../utils/loanCalc');
+
 function pingSelf() {
   const url = process.env.RENDER_EXTERNAL_URL || 'https://finance-app-awae.onrender.com/health';
   axios.get(url).then(() => {
@@ -85,11 +87,14 @@ function pingSelf() {
   }).catch(() => {});
 }
 
-// Schedule to run every day at 8:00 AM and keep-alive ping every 10 minutes
+// Schedule to run every day at 8:00 AM, overdue status sync every 5 minutes, and keep-alive ping every 10 minutes
 const startCronJobs = () => {
   cron.schedule('0 8 * * *', processReminders);
+  cron.schedule('*/5 * * * *', () => syncOverdueStatus(prisma).catch(e => console.error('[Cron] syncOverdue error:', e.message)));
   cron.schedule('*/10 * * * *', pingSelf);
-  console.log('[Cron] Background jobs and 24/7 keep-alive ping scheduled.');
+  // Run initial sync on startup asynchronously
+  syncOverdueStatus(prisma).catch(e => console.error('[Startup] syncOverdue error:', e.message));
+  console.log('[Cron] Background jobs, overdue status sync (5m), and 24/7 keep-alive ping scheduled.');
 };
 
 module.exports = { startCronJobs, processReminders };

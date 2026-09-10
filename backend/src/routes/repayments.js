@@ -101,10 +101,8 @@ router.get('/', authenticate, async (req, res) => {
       if (to) where.dueDate.lte = new Date(to);
     }
 
-    // Auto-mark overdue (only starting day after due date)
-    await syncOverdueStatus(prisma);
-
-    // Auto-extend runs in background — does NOT block the response
+    // Background maintenance tasks — do NOT block HTTP response
+    syncOverdueStatus(prisma).catch(err => console.error('syncOverdueStatus error:', err));
     autoExtendActiveLoans().catch(err => console.error('autoExtend error:', err));
 
     const [repayments, total] = await Promise.all([
@@ -130,10 +128,8 @@ router.get('/', authenticate, async (req, res) => {
 // GET /api/repayments/today — Today's collections
 router.get('/today', authenticate, async (req, res) => {
   try {
-    // Auto-mark overdue first (only starting day after due date)
-    await syncOverdueStatus(prisma);
-
-    // Auto-extend in background — does NOT block response
+    // Background maintenance tasks — do NOT block HTTP response
+    syncOverdueStatus(prisma).catch(err => console.error('syncOverdueStatus error:', err));
     autoExtendActiveLoans().catch(err => console.error('autoExtend error:', err));
 
     const today = new Date();

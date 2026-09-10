@@ -240,11 +240,9 @@ router.get('/:id/preclosure', authenticate, async (req, res) => {
 // GET /api/loans/:id
 router.get('/:id', authenticate, async (req, res) => {
   try {
-    // Auto-sync overdue statuses and penalty amounts
-    await syncOverdueStatus(prisma);
-
-    // Auto-extend installments if running low (before fetching)
-    await autoExtendIfNeeded(req.params.id);
+    // Run maintenance tasks in background — do NOT block HTTP response
+    syncOverdueStatus(prisma).catch(err => console.error('syncOverdueStatus error:', err));
+    autoExtendIfNeeded(req.params.id).catch(err => console.error('autoExtend error:', err));
 
     const loan = await prisma.loan.findUnique({
       where: { id: req.params.id },

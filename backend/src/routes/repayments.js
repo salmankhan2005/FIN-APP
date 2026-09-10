@@ -3,6 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
 const { syncOverdueStatus } = require('../utils/loanCalc');
+const { getLoanFilter } = require('../utils/tenant');
 const prisma = new PrismaClient();
 
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -14,13 +15,15 @@ function getBatchSize(tenureUnit) {
 }
 
 /**
- * Auto-extend installments for ALL active loans that are running low.
- * Called before fetching repayments so the collection page always has upcoming entries.
+ * Auto-extend installments for active loans that are running low.
  */
-async function autoExtendActiveLoans() {
-  // Find active loans where unpaid installments are running low
+async function autoExtendActiveLoans(loanFilter = null) {
+  const where = { status: 'ACTIVE' };
+  if (loanFilter) {
+    where.AND = [loanFilter];
+  }
   const activeLoans = await prisma.loan.findMany({
-    where: { status: 'ACTIVE' },
+    where,
     select: { id: true, principalAmount: true, outstandingPrincipal: true, interestRate: true, tenureUnit: true },
   });
 
@@ -81,45 +84,37 @@ router.get('/', authenticate, async (req, res) => {
   try {
     const { loanId, status, from, to, page = 1, limit = 50 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const where = {};
+    const loanFilter = getLoanFilter(req.user);
 
-    if (loanId) where.loanId = loanId;
+    const andConditions = [
+      { loan: loanFilter }
+    ];
+
+    if (loanId) andConditions.push({ loanId });
     if (status === 'OVERDUE') {
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
-      where.OR = [
-        { status: 'OVERDUE' },
-        { dueDate: { lt: startOfToday }, status: { in: ['PENDING', 'PARTIAL'] } }
-      ];
+      andConditions.push({
+        OR: [
+          { status: 'OVERDUE' },
+          { dueDate: { lt: startOfToday }, status: { in: ['PENDING', 'PARTIAL'] } }
+        ]
+      });
     } else if (status) {
-      where.status = status;
+      andConditions.push({ status });
     }
 
     if (from || to) {
-      where.dueDate = {};
-      if (from) where.dueDate.gte = new Date(from);
-      if (to) where.dueDate.lte = new Date(to);
+      const dateCond = {};
+      if (from) dateCond.gte = new Date(from);
+      if (to) dateCond.lte = new Date(to);
+      andConditions.push({ dueDate: dateCond });
     }
 
-    if (req.user.role === 'CUSTOMER') {
-      const customer = await prisma.customer.findFirst({
-        where: {
-          OR: [
-            { userId: req.user.id },
-            ...(req.user.phone ? [{ phone: req.user.phone }] : [])
-          ]
-        }
-      });
-      if (customer) {
-        where.loan = { customerId: customer.id };
-      } else {
-        where.id = 'non-existent-id';
-      }
-    }
+    const where = { AND: andConditions };
 
-    // Background maintenance tasks — do NOT block HTTP response
     syncOverdueStatus(prisma).catch(err => console.error('syncOverdueStatus error:', err));
-    autoExtendActiveLoans().catch(err => console.error('autoExtend error:', err));
+    autoExtendActiveLoans(loanFilter).catch(err => console.error('autoExtend error:', err));
 
     const [repayments, total] = await Promise.all([
       prisma.repayment.findMany({
@@ -144,9 +139,10 @@ router.get('/', authenticate, async (req, res) => {
 // GET /api/repayments/today — Today's collections
 router.get('/today', authenticate, async (req, res) => {
   try {
-    // Background maintenance tasks — do NOT block HTTP response
+    const loanFilter = getLoanFilter(req.user);
+
     syncOverdueStatus(prisma).catch(err => console.error('syncOverdueStatus error:', err));
-    autoExtendActiveLoans().catch(err => console.error('autoExtend error:', err));
+    autoExtendActiveLoans(loanFilter).catch(err => console.error('autoExtend error:', err));
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -154,28 +150,13 @@ router.get('/today', authenticate, async (req, res) => {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const where = {
+      loan: loanFilter,
       OR: [
         { dueDate: { gte: today, lt: tomorrow } },
         { payments: { some: { collectedAt: { gte: today, lt: tomorrow } } } },
         { paidAt: { gte: today, lt: tomorrow } },
       ]
     };
-
-    if (req.user.role === 'CUSTOMER') {
-      const customer = await prisma.customer.findFirst({
-        where: {
-          OR: [
-            { userId: req.user.id },
-            ...(req.user.phone ? [{ phone: req.user.phone }] : [])
-          ]
-        }
-      });
-      if (customer) {
-        where.loan = { customerId: customer.id };
-      } else {
-        where.id = 'non-existent-id';
-      }
-    }
 
     const repayments = await prisma.repayment.findMany({
       where,

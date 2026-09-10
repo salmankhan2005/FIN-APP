@@ -4,6 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../utils/audit');
 const { generateLoanNumber, syncOverdueStatus } = require('../utils/loanCalc');
+const { getLoanFilter } = require('../utils/tenant');
 const prisma = new PrismaClient();
 
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -132,37 +133,25 @@ router.get('/', authenticate, async (req, res) => {
   try {
     const { status, customerId, agentId, search, tenureUnit, page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const where = {};
+    const tenantFilter = getLoanFilter(req.user);
+    const andConditions = [tenantFilter];
 
-    if (status) where.status = status;
-    if (customerId) where.customerId = customerId;
-    if (agentId) where.agentId = agentId;
-    if (tenureUnit) where.tenureUnit = tenureUnit;
+    if (status) andConditions.push({ status });
+    if (customerId) andConditions.push({ customerId });
+    if (agentId) andConditions.push({ agentId });
+    if (tenureUnit) andConditions.push({ tenureUnit });
     
     if (search) {
-      where.OR = [
-        { loanNumber: { contains: search, mode: 'insensitive' } },
-        { customer: { name: { contains: search, mode: 'insensitive' } } },
-        { customer: { phone: { contains: search, mode: 'insensitive' } } },
-      ];
+      andConditions.push({
+        OR: [
+          { loanNumber: { contains: search, mode: 'insensitive' } },
+          { customer: { name: { contains: search, mode: 'insensitive' } } },
+          { customer: { phone: { contains: search, mode: 'insensitive' } } },
+        ]
+      });
     }
     
-    // if (req.user.role === 'AGENT') where.agentId = req.user.id; // Removed so all agents see all loans
-    if (req.user.role === 'CUSTOMER') {
-      const customer = await prisma.customer.findFirst({
-        where: {
-          OR: [
-            { userId: req.user.id },
-            ...(req.user.phone ? [{ phone: req.user.phone }] : [])
-          ]
-        }
-      });
-      if (customer) {
-        where.customerId = customer.id;
-      } else {
-        where.id = 'non-existent-id';
-      }
-    }
+    const where = { AND: andConditions };
 
     const [loans, total] = await Promise.all([
       prisma.loan.findMany({
@@ -360,10 +349,13 @@ router.post('/', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => 
     }
     const loanNumber = `LN-${String(nextSeq).padStart(4, '0')}`;
 
+    const targetAdminId = req.user.role === 'ADMIN' ? req.user.id : (req.user.adminId || req.user.id);
     const loan = await prisma.loan.create({
       data: {
         loanNumber,
         customerId,
+        adminId: targetAdminId,
+        creatorId: req.user.id,
         agentId: agentId || req.user.id,
         principalAmount: parseFloat(principalAmount),
         interestRate: parseFloat(interestRate),

@@ -3,6 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../utils/audit');
+const { getCustomerFilter } = require('../utils/tenant');
 const prisma = new PrismaClient();
 
 // GET /api/customers
@@ -10,23 +11,21 @@ router.get('/', authenticate, async (req, res) => {
   try {
     const { search, page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const where = { isActive: true };
-    if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { phone: { contains: search } },
-        { idNumber: { contains: search } },
-      ];
-    }
+    const tenantFilter = getCustomerFilter(req.user);
 
-    // Customers can strictly only see their own customer profile
-    if (req.user.role === 'CUSTOMER') {
-      const userPhone = req.user.phone;
-      where.OR = [
-        { userId: req.user.id },
-        ...(userPhone ? [{ phone: userPhone }] : [])
-      ];
-    }
+    const where = {
+      isActive: true,
+      AND: [
+        tenantFilter,
+        ...(search ? [{
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { phone: { contains: search, mode: 'insensitive' } },
+            { idNumber: { contains: search, mode: 'insensitive' } },
+          ]
+        }] : [])
+      ]
+    };
 
     const [customers, total, credentialLogs] = await Promise.all([
       prisma.customer.findMany({
@@ -188,9 +187,12 @@ router.post('/', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => 
       });
     }
 
+    const targetAdminId = req.user.role === 'ADMIN' ? req.user.id : (req.user.adminId || req.user.id);
     const customer = await prisma.customer.create({
       data: {
         userId: user.id,
+        adminId: targetAdminId,
+        creatorId: req.user.id,
         name: trimmedName,
         phone: trimmedPhone,
         email: cleanEmail,

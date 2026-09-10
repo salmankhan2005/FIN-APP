@@ -3,15 +3,20 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { authenticate, authorize } = require('../middleware/auth');
 const { syncOverdueStatus } = require('../utils/loanCalc');
+const { getLoanFilter, getCustomerFilter } = require('../utils/tenant');
 const prisma = new PrismaClient();
 
 // GET /api/reports/defaulters
 router.get('/defaulters', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => {
   try {
     syncOverdueStatus(prisma).catch(err => console.error('syncOverdueStatus error:', err));
+    const loanFilter = getLoanFilter(req.user);
 
     const defaulters = await prisma.repayment.findMany({
-      where: { status: 'OVERDUE' },
+      where: {
+        status: 'OVERDUE',
+        loan: loanFilter
+      },
       include: {
         loan: {
           include: {
@@ -33,12 +38,16 @@ router.get('/defaulters', authenticate, authorize('ADMIN', 'AGENT'), async (req,
 router.get('/daily-collection', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => {
   try {
     const { date } = req.query;
+    const loanFilter = getLoanFilter(req.user);
     const day = date ? new Date(date) : new Date();
     day.setHours(0, 0, 0, 0);
     const nextDay = new Date(day);
     nextDay.setDate(nextDay.getDate() + 1);
 
-    const where = { collectedAt: { gte: day, lt: nextDay } };
+    const where = {
+      collectedAt: { gte: day, lt: nextDay },
+      repayment: { loan: loanFilter }
+    };
     if (req.user.role === 'AGENT') where.collectedById = req.user.id;
 
     const payments = await prisma.payment.findMany({

@@ -2,23 +2,28 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { authenticate, authorize } = require('../middleware/auth');
+const { syncOverdueStatus } = require('../utils/loanCalc');
+const { getCustomerFilter, getLoanFilter } = require('../utils/tenant');
 const prisma = new PrismaClient();
 
-const { syncOverdueStatus } = require('../utils/loanCalc');
+const summaryCache = new Map();
 
-let summaryCacheData = null;
-let summaryCacheTime = 0;
-
-function clearSummaryCache() {
-  summaryCacheTime = 0;
+function clearSummaryCache(userId = null) {
+  if (userId) {
+    summaryCache.delete(userId);
+  } else {
+    summaryCache.clear();
+  }
 }
 
 // GET /api/dashboard/summary
 router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
+    const userId = req.user.id;
     const nowTs = Date.now();
-    if (summaryCacheData && (nowTs - summaryCacheTime < 15000)) {
-      return res.json(summaryCacheData);
+    const cached = summaryCache.get(userId);
+    if (cached && (nowTs - cached.time < 15000)) {
+      return res.json(cached.data);
     }
 
     const now = new Date();
@@ -36,45 +41,55 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
 
     syncOverdueStatus(prisma).catch(err => console.error('syncOverdueStatus error:', err));
 
+    const customerFilter = getCustomerFilter(req.user);
+    const loanFilter = getLoanFilter(req.user);
+
     const [
       activeLoans,
       activeCustomers
     ] = await Promise.all([
-      prisma.loan.count({ where: { status: 'ACTIVE' } }),
-      prisma.customer.count({ where: { isActive: true } }),
+      prisma.loan.count({ where: { status: 'ACTIVE', AND: [loanFilter] } }),
+      prisma.customer.count({ where: { isActive: true, AND: [customerFilter] } }),
     ]);
 
     // Financial aggregates (Overall)
     const loanAgg = await prisma.loan.aggregate({
-      where: { status: { in: ['ACTIVE', 'CLOSED', 'DEFAULTED'] } },
+      where: { status: { in: ['ACTIVE', 'CLOSED', 'DEFAULTED'] }, AND: [loanFilter] },
       _sum: { principalAmount: true, totalPayable: true, totalInterest: true },
     });
 
     // Payments aggregate
     const paymentAgg = await prisma.payment.aggregate({
+      where: { repayment: { loan: loanFilter } },
       _sum: { amount: true },
     });
 
     // Today's Collection
     const todaysPayments = await prisma.payment.aggregate({
-      where: { collectedAt: { gte: startOfToday, lte: endOfToday } },
+      where: {
+        collectedAt: { gte: startOfToday, lte: endOfToday },
+        repayment: { loan: loanFilter }
+      },
       _sum: { amount: true },
     });
 
     // Today's Dues
     const todaysDues = await prisma.repayment.aggregate({
-      where: { dueDate: { gte: startOfToday, lte: endOfToday } },
+      where: {
+        dueDate: { gte: startOfToday, lte: endOfToday },
+        loan: loanFilter
+      },
       _sum: { dueAmount: true, paidAmount: true },
     });
 
-    // Pending Collections = ONLY already-due amounts (OVERDUE + PARTIAL)
-    // PENDING status = future installments not yet due — DO NOT include those!
+    // Pending Collections = ONLY already-due amounts (OVERDUE + PARTIAL + today's pending)
     const pendingDues = await prisma.repayment.aggregate({
       where: {
+        loan: loanFilter,
         OR: [
           { status: 'OVERDUE' },
           { status: 'PARTIAL' },
-          { status: 'PENDING', dueDate: { lte: endOfToday } }, // Today's pending only
+          { status: 'PENDING', dueDate: { lte: endOfToday } },
         ]
       },
       _sum: { dueAmount: true, paidAmount: true },
@@ -83,28 +98,40 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
     // Overdue Loans Count (Distinct loans with overdue)
     const overdueLoans = await prisma.repayment.groupBy({
       by: ['loanId'],
-      where: { status: 'OVERDUE' },
+      where: {
+        status: 'OVERDUE',
+        loan: loanFilter
+      },
     });
 
     const overdueAgg = await prisma.repayment.aggregate({
-      where: { status: 'OVERDUE' },
+      where: {
+        status: 'OVERDUE',
+        loan: loanFilter
+      },
       _sum: { dueAmount: true, paidAmount: true },
     });
 
     // Monthly Aggregates
     const monthlyLoans = await prisma.loan.aggregate({
-      where: { createdAt: { gte: startOfMonth } },
+      where: { createdAt: { gte: startOfMonth }, AND: [loanFilter] },
       _sum: { principalAmount: true, totalInterest: true },
     });
 
     const monthlyPayments = await prisma.payment.aggregate({
-      where: { collectedAt: { gte: startOfMonth } },
+      where: {
+        collectedAt: { gte: startOfMonth },
+        repayment: { loan: loanFilter }
+      },
       _sum: { amount: true },
     });
 
     // Calculate actual realized monthly interest & profit
     const monthlyPaymentRecords = await prisma.payment.findMany({
-      where: { collectedAt: { gte: startOfMonth } },
+      where: {
+        collectedAt: { gte: startOfMonth },
+        repayment: { loan: loanFilter }
+      },
       include: {
         repayment: {
           include: { loan: { select: { interestType: true, principalAmount: true, totalPayable: true, totalInterest: true } } }
@@ -144,7 +171,8 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
     const monthlyDeductionLoans = await prisma.loan.findMany({
       where: {
         createdAt: { gte: startOfMonth },
-        interestType: 'WITHOUT_INTEREST'
+        interestType: 'WITHOUT_INTEREST',
+        AND: [loanFilter]
       },
       select: { totalInterest: true, processingFee: true }
     });
@@ -157,6 +185,9 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
 
     // === All-Time Actual Profit (what was really collected, not expected) ===
     const allPaymentRecords = await prisma.payment.findMany({
+      where: {
+        repayment: { loan: loanFilter }
+      },
       include: {
         repayment: {
           include: { loan: { select: { interestType: true, totalPayable: true, totalInterest: true } } }
@@ -181,7 +212,10 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
 
     // All deduction-based loans: interest was realized at disbursement
     const allDeductionLoans = await prisma.loan.findMany({
-      where: { interestType: 'WITHOUT_INTEREST' },
+      where: {
+        interestType: 'WITHOUT_INTEREST',
+        AND: [loanFilter]
+      },
       select: { totalInterest: true, processingFee: true }
     });
     allDeductionLoans.forEach(l => {
@@ -189,12 +223,12 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
     });
     totalActualProfit = Math.round(totalActualProfit * 100) / 100;
 
-
     // Upcoming Dues (Next 7 days)
     const upcomingDues = await prisma.repayment.findMany({
       where: { 
         dueDate: { gt: endOfToday, lte: next7Days },
-        status: { in: ['PENDING', 'PARTIAL'] }
+        status: { in: ['PENDING', 'PARTIAL'] },
+        loan: loanFilter
       },
       include: { loan: { include: { customer: { select: { name: true, phone: true } } } } },
       orderBy: { dueDate: 'asc' },
@@ -203,6 +237,9 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
 
     // Recent Collections (Last 5)
     const recentCollections = await prisma.payment.findMany({
+      where: {
+        repayment: { loan: loanFilter }
+      },
       include: { 
         repayment: { include: { loan: { include: { customer: { select: { name: true } } } } } },
         collectedBy: { select: { name: true } }
@@ -220,13 +257,27 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
       const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
       
       const [mPay, mLoan] = await Promise.all([
-        prisma.payment.aggregate({ where: { collectedAt: { gte: start, lte: end } }, _sum: { amount: true } }),
-        prisma.loan.aggregate({ where: { createdAt: { gte: start, lte: end } }, _sum: { principalAmount: true, totalInterest: true } })
+        prisma.payment.aggregate({
+          where: {
+            collectedAt: { gte: start, lte: end },
+            repayment: { loan: loanFilter }
+          },
+          _sum: { amount: true }
+        }),
+        prisma.loan.aggregate({
+          where: {
+            createdAt: { gte: start, lte: end },
+            AND: [loanFilter]
+          },
+          _sum: { principalAmount: true, totalInterest: true }
+        })
       ]);
 
-      // Actual interest collected in this specific month
       const mPayRecords = await prisma.payment.findMany({
-        where: { collectedAt: { gte: start, lte: end } },
+        where: {
+          collectedAt: { gte: start, lte: end },
+          repayment: { loan: loanFilter }
+        },
         include: {
           repayment: {
             include: { loan: { select: { interestType: true, totalPayable: true, totalInterest: true } } }
@@ -248,7 +299,11 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
         }
       });
       const mDeductionLoans = await prisma.loan.findMany({
-        where: { createdAt: { gte: start, lte: end }, interestType: 'WITHOUT_INTEREST' },
+        where: {
+          createdAt: { gte: start, lte: end },
+          interestType: 'WITHOUT_INTEREST',
+          AND: [loanFilter]
+        },
         select: { totalInterest: true, processingFee: true }
       });
       mDeductionLoans.forEach(l => { mInterest += (l.totalInterest || l.processingFee || 0); });
@@ -263,10 +318,9 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
       });
     }
 
-
     // Outstanding separated by Loan Types and Principal vs Interest
     const activeLoanRecords = await prisma.loan.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', AND: [loanFilter] },
       select: {
         id: true,
         interestType: true,
@@ -296,20 +350,17 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
       let intRemaining = 0;
 
       if (type === 'FLAT') {
-        // Regular Interest: Principal = remaining principal. Interest = only unpaid interest from due/overdue installments up to today
         princRemaining = loan.outstandingPrincipal ?? loan.principalAmount;
         const unpaidDueInterest = (loan.repayments || [])
           .filter(r => r.status === 'OVERDUE' || (r.status === 'PENDING' && new Date(r.dueDate) <= startOfToday) || r.status === 'PARTIAL')
           .reduce((acc, r) => acc + Math.max(0, (r.dueAmount || 0) - (r.paidAmount || 0)), 0);
         intRemaining = unpaidDueInterest;
       } else if (type === 'WITHOUT_INTEREST') {
-        // Deduction Based: Interest was deducted upfront. Total remaining = sum of unpaid installments
         const paid = (loan.repayments || []).reduce((acc, r) => acc + (r.paidAmount || 0), 0);
         const totalRemaining = Math.max(0, (loan.totalPayable || loan.principalAmount) - paid);
         princRemaining = totalRemaining;
         intRemaining = 0;
       } else {
-        // EMI (Reducing Principal)
         const paid = (loan.repayments || []).reduce((acc, r) => acc + (r.paidAmount || 0), 0);
         const totalRemaining = Math.max(0, (loan.totalPayable || loan.principalAmount) - paid);
         princRemaining = Math.min(totalRemaining, loan.outstandingPrincipal ?? loan.principalAmount);
@@ -338,12 +389,12 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
         outstandingInterest: totalOutstandingInterest,
         totalDisbursed: loanAgg._sum.principalAmount || 0,
         totalCollected: paymentAgg._sum.amount || 0,
-        totalInterestCollected: totalActualProfit, // Actual profit collected so far
+        totalInterestCollected: totalActualProfit,
         activeCustomers,
         activeLoans,
         todayCollection: todaysPayments._sum.amount || 0,
         todayDueAmount: todayDueAmt,
-        remainingToday: Math.max(0, todayDueAmt - todayPaidAmt), // Rough approximation
+        remainingToday: Math.max(0, todayDueAmt - todayPaidAmt),
         pendingCollections: (pendingDues._sum.dueAmount || 0) - (pendingDues._sum.paidAmount || 0),
         overdueLoansCount: overdueLoans.length,
         totalOverdueAmount: (overdueAgg._sum.dueAmount || 0) - (overdueAgg._sum.paidAmount || 0),
@@ -362,8 +413,7 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
       },
     };
 
-    summaryCacheData = responsePayload;
-    summaryCacheTime = Date.now();
+    summaryCache.set(userId, { data: responsePayload, time: Date.now() });
     res.json(responsePayload);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -373,6 +423,7 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
 // GET /api/dashboard/agent — Agent dashboard
 router.get('/agent', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => {
   try {
+    const loanFilter = getLoanFilter(req.user);
     const agentId = req.user.role === 'AGENT' ? req.user.id : (req.query.agentId || null);
 
     const today = new Date();
@@ -382,17 +433,16 @@ router.get('/agent', authenticate, authorize('ADMIN', 'AGENT'), async (req, res)
 
     syncOverdueStatus(prisma).catch(err => console.error('syncOverdueStatus error:', err));
 
-    // Build filters — if no agentId (admin with no filter), show all
-    const loanWhere = { status: 'ACTIVE' };
+    const loanWhere = { status: 'ACTIVE', AND: [loanFilter] };
     if (agentId) loanWhere.agentId = agentId;
 
-    const repaymentWhere = { dueDate: { gte: today, lt: tomorrow } };
-    if (agentId) repaymentWhere.loan = { agentId };
+    const repaymentWhere = { dueDate: { gte: today, lt: tomorrow }, loan: loanFilter };
+    if (agentId) repaymentWhere.loan = { ...loanFilter, agentId };
 
-    const paymentWhere = { collectedAt: { gte: today } };
+    const paymentWhere = { collectedAt: { gte: today }, repayment: { loan: loanFilter } };
     if (agentId) paymentWhere.collectedById = agentId;
 
-    const paymentWhereAll = {};
+    const paymentWhereAll = { repayment: { loan: loanFilter } };
     if (agentId) paymentWhereAll.collectedById = agentId;
 
     const [collectedToday, totalCollected] = await Promise.all([
@@ -423,25 +473,44 @@ router.get('/agent', authenticate, authorize('ADMIN', 'AGENT'), async (req, res)
 // POST /api/dashboard/reset-all-data — Reset production database
 router.post('/reset-all-data', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
-    try { await prisma.notificationLog.deleteMany({}); } catch (e) {}
-    await prisma.payment.deleteMany({});
-    try { await prisma.auditLog.deleteMany({}); } catch (e) {}
-    await prisma.repayment.deleteMany({});
-    await prisma.loan.deleteMany({});
-    await prisma.customer.deleteMany({});
-    await prisma.user.deleteMany({ where: { role: 'CUSTOMER' } });
+    const customerFilter = getCustomerFilter(req.user);
+    const loanFilter = getLoanFilter(req.user);
+    
+    // Find all loan IDs belonging to this admin
+    const adminLoans = await prisma.loan.findMany({
+      where: loanFilter,
+      select: { id: true }
+    });
+    const loanIds = adminLoans.map(l => l.id);
 
-    res.json({ success: true, message: 'All test data reset successfully!' });
+    if (loanIds.length > 0) {
+      const reps = await prisma.repayment.findMany({
+        where: { loanId: { in: loanIds } },
+        select: { id: true }
+      });
+      const repIds = reps.map(r => r.id);
+
+      if (repIds.length > 0) {
+        await prisma.payment.deleteMany({ where: { repaymentId: { in: repIds } } });
+        await prisma.repayment.deleteMany({ where: { id: { in: repIds } } });
+      }
+      await prisma.loan.deleteMany({ where: { id: { in: loanIds } } });
+    }
+
+    await prisma.customer.deleteMany({ where: customerFilter });
+    clearSummaryCache(req.user.id);
+
+    res.json({ success: true, message: 'All your data has been reset successfully!' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-
 // GET /api/dashboard/profit — Detailed Profit Breakdown with filters
 router.get('/profit', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { loanType, dateFrom, dateTo, period } = req.query;
+    const loanFilter = getLoanFilter(req.user);
 
     // Build date range
     const now = new Date();
@@ -470,20 +539,22 @@ router.get('/profit', authenticate, authorize('ADMIN'), async (req, res) => {
       endDate = new Date(now);
       endDate.setHours(23, 59, 59, 999);
     } else {
-      // Default: All time
       startDate = new Date('2020-01-01');
       endDate = new Date(now);
       endDate.setHours(23, 59, 59, 999);
     }
 
-    // Build loan type filter
     const loanTypeFilter = loanType && loanType !== 'ALL' ? { interestType: loanType } : {};
 
-    // Fetch all payments in date range with loan info
     const payments = await prisma.payment.findMany({
       where: {
         collectedAt: { gte: startDate, lte: endDate },
-        repayment: { loan: { ...loanTypeFilter } }
+        repayment: {
+          loan: {
+            ...loanTypeFilter,
+            AND: [loanFilter]
+          }
+        }
       },
       include: {
         repayment: {
@@ -507,13 +578,13 @@ router.get('/profit', authenticate, authorize('ADMIN'), async (req, res) => {
       orderBy: { collectedAt: 'desc' }
     });
 
-    // Deduction loans created in date range (interest realized at disbursement)
     let deductionLoans = [];
     if (!loanType || loanType === 'ALL' || loanType === 'WITHOUT_INTEREST') {
       deductionLoans = await prisma.loan.findMany({
         where: {
           disbursedAt: { gte: startDate, lte: endDate },
-          interestType: 'WITHOUT_INTEREST'
+          interestType: 'WITHOUT_INTEREST',
+          AND: [loanFilter]
         },
         select: {
           id: true,
@@ -528,11 +599,9 @@ router.get('/profit', authenticate, authorize('ADMIN'), async (req, res) => {
       });
     }
 
-    // Build profit entries
     const profitEntries = [];
     let totalProfit = 0;
 
-    // FLAT & EMI: profit comes from payments
     const byLoan = {};
     payments.forEach(p => {
       const loan = p.repayment?.loan;
@@ -547,7 +616,7 @@ router.get('/profit', authenticate, authorize('ADMIN'), async (req, res) => {
         const ratio = loan.totalPayable > 0 ? (loan.totalInterest / loan.totalPayable) : 0;
         profit = (p.amount || 0) * ratio;
       } else {
-        return; // WITHOUT_INTEREST handled separately
+        return;
       }
       const key = loan.id;
       if (!byLoan[key]) {
@@ -569,7 +638,6 @@ router.get('/profit', authenticate, authorize('ADMIN'), async (req, res) => {
 
     Object.values(byLoan).forEach(e => profitEntries.push(e));
 
-    // WITHOUT_INTEREST: profit realized at disbursement
     deductionLoans.forEach(l => {
       const profit = l.totalInterest || l.processingFee || 0;
       profitEntries.push({
@@ -588,7 +656,6 @@ router.get('/profit', authenticate, authorize('ADMIN'), async (req, res) => {
 
     totalProfit = Math.round(totalProfit * 100) / 100;
 
-    // Summary by loan type
     const byType = { FLAT: 0, EMI: 0, WITHOUT_INTEREST: 0 };
     profitEntries.forEach(e => {
       byType[e.loanType] = Math.round(((byType[e.loanType] || 0) + e.collectedInterest) * 100) / 100;

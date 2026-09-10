@@ -13,6 +13,8 @@ datasource db {
 model User {
   id           String   @id @default(uuid())
   agentId      String?
+  adminId      String?
+  creatorId    String?
   name         String
   email        String
   phone        String
@@ -45,6 +47,8 @@ model RefreshToken {
 model Customer {
   id          String   @id @default(uuid())
   userId      String
+  adminId     String?
+  creatorId   String?
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   phone       String
@@ -78,11 +82,14 @@ model Customer {
   @@index([phone])
   @@index([name])
   @@index([idNumber])
+  @@index([adminId])
 }
 
 model Loan {
   id                String   @id @default(uuid())
   loanNumber        String   @unique
+  adminId           String?
+  creatorId         String?
   customerId        String
   customer          Customer @relation(fields: [customerId], references: [id])
   agentId           String?

@@ -4,14 +4,22 @@ const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../utils/audit');
+const { getUserFilter, isLegacyAdmin } = require('../utils/tenant');
 const prisma = new PrismaClient();
 
 // GET /api/users — Admin only
 router.get('/', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { role, page = 1, limit = 20 } = req.query;
-    const where = role ? { role } : {};
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    const userFilter = getUserFilter(req.user);
+
+    const andConditions = [userFilter];
+    if (role) {
+      andConditions.push({ role });
+    }
+
+    const where = { AND: andConditions };
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
@@ -34,7 +42,7 @@ router.get('/', authenticate, authorize('ADMIN'), async (req, res) => {
 router.post('/', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { name, email, phone, role } = req.body;
-    const existing = await prisma.user.findFirst({ where: { OR: [{ email }, { phone }] } });
+    const existing = await prisma.user.findFirst({ where: { OR: [{ email: email ? email.toLowerCase() : undefined }, { phone }] } });
     if (existing) return res.status(409).json({ success: false, message: 'Email or phone exists' });
 
     let agentId = null;
@@ -48,7 +56,16 @@ router.post('/', authenticate, authorize('ADMIN'), async (req, res) => {
     }
 
     const user = await prisma.user.create({
-      data: { name, email: email.toLowerCase(), phone, passwordHash, role: role || 'AGENT', agentId },
+      data: {
+        name,
+        email: email ? email.toLowerCase() : `${phone}@loanflow.local`,
+        phone,
+        passwordHash,
+        role: role || 'AGENT',
+        agentId,
+        adminId: req.user.id,
+        creatorId: req.user.id
+      },
     });
 
     await auditLog(req.user.id, 'CREATE_USER', 'User', user.id, { role: user.role }, req);
@@ -69,7 +86,7 @@ router.patch('/:id', authenticate, authorize('ADMIN'), async (req, res) => {
     const { name, email, phone, role, isActive } = req.body;
     const user = await prisma.user.update({
       where: { id: req.params.id },
-      data: { name, email, phone, role, isActive },
+      data: { name, email: email ? email.toLowerCase() : undefined, phone, role, isActive },
     });
     await auditLog(req.user.id, 'UPDATE_USER', 'User', user.id, { isActive }, req);
     res.json({ success: true, data: user });

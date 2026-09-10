@@ -1,30 +1,34 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Suspense, lazy } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import AppLayout from './components/AppLayout';
-import Dashboard from './pages/Dashboard';
-import CustomersPage from './pages/CustomersPage';
-import CustomerDetail from './pages/CustomerDetail';
-import LoansPage from './pages/LoansPage';
-import LoanDetail from './pages/LoanDetail';
-import CreateLoan from './pages/CreateLoan';
-import CollectionPage from './pages/CollectionPage';
-import UsersPage from './pages/UsersPage';
-import SettingsPage from './pages/SettingsPage';
-import LoginPage from './pages/LoginPage';
-import RoleSelectionPage from './pages/RoleSelectionPage';
-import SplashScreen from './components/SplashScreen';
-import OnboardingSlides from './components/OnboardingSlides';
-import NotificationsDashboard from './pages/NotificationsDashboard';
-import ProfitPage from './pages/ProfitPage';
-import CollectionRoutePage from './pages/CollectionRoutePage';
-import PaymentsHistoryPage from './pages/PaymentsHistoryPage';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { useEffect, useState } from 'react';
-import ScrollToTop from './components/ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
+
+// ── Eagerly loaded (always needed immediately) ──────────────────────────────
+import AppLayout from './components/AppLayout';
+import SplashScreen from './components/SplashScreen';
+import LoginPage from './pages/LoginPage';
+import RoleSelectionPage from './pages/RoleSelectionPage';
+import ScrollToTop from './components/ScrollToTop';
+
+// ── Lazy loaded (only loaded when navigated to) ─────────────────────────────
+const Dashboard          = lazy(() => import('./pages/Dashboard'));
+const CustomersPage      = lazy(() => import('./pages/CustomersPage'));
+const CustomerDetail     = lazy(() => import('./pages/CustomerDetail'));
+const LoansPage          = lazy(() => import('./pages/LoansPage'));
+const LoanDetail         = lazy(() => import('./pages/LoanDetail'));
+const CreateLoan         = lazy(() => import('./pages/CreateLoan'));
+const CollectionPage     = lazy(() => import('./pages/CollectionPage'));
+const UsersPage          = lazy(() => import('./pages/UsersPage'));
+const SettingsPage       = lazy(() => import('./pages/SettingsPage'));
+const NotificationsDashboard = lazy(() => import('./pages/NotificationsDashboard'));
+const ProfitPage         = lazy(() => import('./pages/ProfitPage'));
+const CollectionRoutePage = lazy(() => import('./pages/CollectionRoutePage'));
+const PaymentsHistoryPage = lazy(() => import('./pages/PaymentsHistoryPage'));
+const OnboardingSlides   = lazy(() => import('./components/OnboardingSlides'));
 
 const STEP_SPLASH = 'splash';
 const STEP_ONBOARDING = 'onboarding';
@@ -37,12 +41,11 @@ function LoadingFallback() {
     <div style={{
       minHeight: '100vh',
       display: 'flex',
-      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'var(--bg-app, #f8fafc)'
+      background: 'var(--bg-primary, #f8fafc)'
     }}>
-      <div className="spinner" style={{ width: 40, height: 40 }} />
+      <div className="spinner" style={{ width: 36, height: 36 }} />
     </div>
   );
 }
@@ -51,30 +54,29 @@ function AuthenticatedApp() {
   const { user, loading, isAdmin } = useAuth();
 
   if (loading) return <LoadingFallback />;
-
-  // If not authenticated, show a spinner instead of blank screen
-  // (OnboardingGate will redirect to login shortly via useEffect)
-  if (!user) return <LoadingFallback />;
+  if (!user)   return <LoadingFallback />;
 
   return (
-    <Routes>
-      <Route path="/" element={<AppLayout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="customers" element={<CustomersPage />} />
-        <Route path="customers/:id" element={<CustomerDetail />} />
-        <Route path="loans" element={<LoansPage />} />
-        <Route path="loans/create" element={<CreateLoan />} />
-        <Route path="loans/:id" element={<LoanDetail />} />
-        <Route path="collections" element={<CollectionPage />} />
-        <Route path="notifications" element={<NotificationsDashboard />} />
-        <Route path="users" element={isAdmin ? <UsersPage /> : <Navigate to="/" replace />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="profit" element={isAdmin ? <ProfitPage /> : <Navigate to="/" replace />} />
-        <Route path="payment-history" element={isAdmin ? <PaymentsHistoryPage /> : <Navigate to="/" replace />} />
-        <Route path="collection-route" element={<CollectionRoutePage />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="customers" element={<CustomersPage />} />
+          <Route path="customers/:id" element={<CustomerDetail />} />
+          <Route path="loans" element={<LoansPage />} />
+          <Route path="loans/create" element={<CreateLoan />} />
+          <Route path="loans/:id" element={<LoanDetail />} />
+          <Route path="collections" element={<CollectionPage />} />
+          <Route path="notifications" element={<NotificationsDashboard />} />
+          <Route path="users" element={isAdmin ? <UsersPage /> : <Navigate to="/" replace />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="profit" element={isAdmin ? <ProfitPage /> : <Navigate to="/" replace />} />
+          <Route path="payment-history" element={isAdmin ? <PaymentsHistoryPage /> : <Navigate to="/" replace />} />
+          <Route path="collection-route" element={<CollectionRoutePage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 
@@ -82,16 +84,13 @@ function OnboardingGate() {
   const { user } = useAuth();
 
   const [step, setStep] = useState(() => {
-    // If already logged in, skip onboarding
     if (user) return STEP_APP;
-    // Check both sessionStorage and localStorage so it persists across refreshes
     const seen = sessionStorage.getItem('finova_onboarding_done') || localStorage.getItem('finova_onboarding_done');
     return seen ? STEP_ROLE : STEP_SPLASH;
   });
 
   const [selectedRole, setSelectedRole] = useState('ADMIN');
 
-  // When user logs in, advance to app
   useEffect(() => {
     if (user && step !== STEP_APP) {
       sessionStorage.setItem('finova_onboarding_done', 'true');
@@ -102,19 +101,22 @@ function OnboardingGate() {
 
   return (
     <>
-      {/* Onboarding overlays */}
       {step === STEP_SPLASH && (
-        <SplashScreen onFinish={() => setStep(STEP_ONBOARDING)} duration={2400} />
+        <SplashScreen onFinish={() => setStep(STEP_ONBOARDING)} duration={1800} />
       )}
       {step === STEP_ONBOARDING && (
-        <OnboardingSlides onFinish={() => setStep(STEP_ROLE)} />
+        <Suspense fallback={<LoadingFallback />}>
+          <OnboardingSlides onFinish={() => setStep(STEP_ROLE)} />
+        </Suspense>
       )}
       {step === STEP_ROLE && (
         <RoleSelectionPage
           onSelectRole={(role) => { setSelectedRole(role); setStep(STEP_LOGIN); }}
-          onBack={step === STEP_ROLE && !sessionStorage.getItem('finova_onboarding_done') && !localStorage.getItem('finova_onboarding_done')
-            ? () => setStep(STEP_ONBOARDING)
-            : null}
+          onBack={
+            !sessionStorage.getItem('finova_onboarding_done') && !localStorage.getItem('finova_onboarding_done')
+              ? () => setStep(STEP_ONBOARDING)
+              : null
+          }
         />
       )}
       {step === STEP_LOGIN && (
@@ -123,11 +125,7 @@ function OnboardingGate() {
           onBackToHome={() => setStep(STEP_ROLE)}
         />
       )}
-
-      {/* Authenticated app */}
       {step === STEP_APP && <AuthenticatedApp />}
-
-      {/* Catch-all: never show blank. This handles split-second transitions */}
       {!step && <LoadingFallback />}
     </>
   );

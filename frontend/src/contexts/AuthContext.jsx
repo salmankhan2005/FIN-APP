@@ -29,8 +29,13 @@ export function AuthProvider({ children }) {
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
 
     if (token && user) {
-      // Verify and sync user details in the background
-      authAPI.me()
+      // Verify and sync user details in the background — with a 5s timeout
+      // so a cold-starting backend doesn't delay the UI
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 5000)
+      );
+
+      Promise.race([authAPI.me(), timeout])
         .then(data => {
           if (data) {
             const updatedUser = data.user || data;
@@ -44,6 +49,8 @@ export function AuthProvider({ children }) {
           }
         })
         .catch((err) => {
+          // Timeout or network error — keep cached user, don't log out
+          if (err?.message === 'timeout' || !err?.response) return;
           // ONLY clear session if server explicitly rejects token with HTTP 401
           if (err.response?.status === 401) {
             sessionStorage.removeItem('token');

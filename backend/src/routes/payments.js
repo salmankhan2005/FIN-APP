@@ -563,6 +563,41 @@ router.post('/close', authenticate, async (req, res) => {
         where: { loanId, status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] } },
         data: { status: 'PAID', paidAt: new Date() },
       });
+    } else {
+      // PARTIAL PRINCIPAL PAYMENT (via Close/Principal modal):
+      // Recalculate interest for all future unpaid/pending installments based on new outstanding principal
+      const newInterestPerPeriod = round2(newOutstanding * (loan.interestRate / 100));
+      updateData.installmentAmount = newInterestPerPeriod;
+
+      const pendingRepayments = await prisma.repayment.findMany({
+        where: {
+          loanId,
+          status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] },
+        },
+      });
+
+      for (const rep of pendingRepayments) {
+        const newInterest = newInterestPerPeriod;
+        const newDueAmount = round2((rep.principal || 0) + newInterest);
+        const paidAmt = rep.paidAmount || 0;
+        const totalWithPenalty = newDueAmount + (rep.penaltyAmount || 0);
+
+        let newRepStatus = rep.status;
+        if (paidAmt >= totalWithPenalty && totalWithPenalty > 0) {
+          newRepStatus = 'PAID';
+        } else if (paidAmt > 0) {
+          newRepStatus = 'PARTIAL';
+        }
+
+        await prisma.repayment.update({
+          where: { id: rep.id },
+          data: {
+            interest: newInterest,
+            dueAmount: newDueAmount,
+            status: newRepStatus,
+          },
+        });
+      }
     }
 
     await prisma.loan.update({ where: { id: loanId }, data: updateData });

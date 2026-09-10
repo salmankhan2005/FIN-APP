@@ -97,27 +97,12 @@ export function AuthProvider({ children }) {
   };
 
   const loginWithGoogle = async (googleUser) => {
-    let response;
-    try {
-      response = await authAPI.googleLogin({
-        email: googleUser.email,
-        name: googleUser.displayName,
-        role: 'ADMIN',
-        uid: googleUser.uid
-      });
-    } catch (err) {
-      if (err?.response?.status === 404 || err?.status === 404 || err?.message?.includes('404')) {
-        console.warn('[Auth] Backend google-login endpoint returned 404, executing seamless admin authentication fallback...');
-        response = await authAPI.login({
-          phone: '6380372501',
-          agentId: 'Admin@123456',
-          password: 'Admin@123456',
-          role: 'ADMIN'
-        });
-      } else {
-        throw err;
-      }
-    }
+    const response = await authAPI.googleLogin({
+      email: googleUser.email,
+      name: googleUser.displayName,
+      role: 'ADMIN',
+      uid: googleUser.uid
+    });
 
     if (response?.accessToken) {
       sessionStorage.setItem('token', response.accessToken);

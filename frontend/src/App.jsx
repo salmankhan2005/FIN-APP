@@ -98,8 +98,10 @@ function OnboardingGate() {
       sessionStorage.setItem('finova_onboarding_done', 'true');
       localStorage.setItem('finova_onboarding_done', 'true');
       setStep(STEP_APP);
+    } else if (!user && step === STEP_APP) {
+      setStep(STEP_ROLE);
     }
-  }, [user]);
+  }, [user, step]);
 
   return (
     <>

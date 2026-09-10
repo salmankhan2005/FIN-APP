@@ -219,7 +219,7 @@ export default function LoanDetail() {
         <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>{paidCount}/{totalCount} paid</div>
 
         {/* Pay Principal button */}
-        {!isWithoutInt && loan.status === 'ACTIVE' && outstanding > 0 && (
+        {loan.status === 'ACTIVE' && outstanding > 0 && (
           <button className="btn btn-ghost" style={{ width: '100%', marginTop: 12, borderColor: 'rgba(245,158,11,0.3)', color: 'var(--warning-600)' }}
             onClick={handleOpenPrincipalModal}>
             <Banknote size={15} /> Close Loan / Pay Principal

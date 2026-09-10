@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { repaymentsAPI, paymentsAPI } from '../services/api';
 import toast from 'react-hot-toast';
-import { HandCoins, CheckCircle, AlertTriangle, Clock, X, Phone, Lock, Route } from 'lucide-react';
+import { HandCoins, CheckCircle, AlertTriangle, Clock, X, Phone, Lock, Route, Banknote } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '-';
@@ -338,12 +338,25 @@ export default function CollectionPage() {
                   <input className="form-input" placeholder="UPI / Txn ID" value={payForm.reference}
                     onChange={e => setPayForm({ ...payForm, reference: e.target.value })} />
                 </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-ghost" onClick={() => setPayModal(null)}>Cancel</button>
-                <button type="submit" className="btn btn-success" disabled={paying}>
-                  {paying ? 'Processing...' : `Collect ₹${(parseFloat(payForm.amount || 0) + parseFloat(payForm.penaltyAmount || 0)).toLocaleString('en-IN')}`}
+              <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: 'var(--warning-600)', borderColor: 'rgba(245,158,11,0.3)', gap: 5 }}
+                  onClick={() => {
+                    const loanId = payModal.loan?.id;
+                    setPayModal(null);
+                    if (loanId) navigate(`/loans/${loanId}`);
+                  }}
+                >
+                  <Banknote size={14} /> Pay Principal / Close Loan
                 </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="btn btn-ghost" onClick={() => setPayModal(null)}>Cancel</button>
+                  <button type="submit" className="btn btn-success" disabled={paying}>
+                    {paying ? 'Processing...' : `Collect ₹${(parseFloat(payForm.amount || 0) + parseFloat(payForm.penaltyAmount || 0)).toLocaleString('en-IN')}`}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

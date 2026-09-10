@@ -262,4 +262,100 @@ router.delete('/:id', authenticate, authorize('ADMIN'), async (req, res) => {
   }
 });
 
+// POST /api/customers/:id/credentials - Agent/Admin creates or updates customer app login credentials
+router.post('/:id/credentials', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => {
+  try {
+    const { password, phone, email } = req.body;
+    if (!password || password.trim().length < 4) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 4 characters long' });
+    }
+
+    const customer = await prisma.customer.findUnique({
+      where: { id: req.params.id },
+      include: { user: true }
+    });
+
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    const bcrypt = require('bcryptjs');
+    const passwordHash = await bcrypt.hash(password.trim(), 12);
+
+    const targetPhone = phone?.trim() || customer.phone;
+    const targetEmail = email?.trim() || customer.email || `${targetPhone}@loanflow.local`;
+
+    let updatedUser;
+    if (customer.user) {
+      updatedUser = await prisma.user.update({
+        where: { id: customer.userId },
+        data: {
+          phone: targetPhone,
+          email: targetEmail.toLowerCase(),
+          passwordHash,
+          role: 'CUSTOMER'
+        }
+      });
+    } else {
+      updatedUser = await prisma.user.create({
+        data: {
+          name: customer.name,
+          phone: targetPhone,
+          email: targetEmail.toLowerCase(),
+          passwordHash,
+          role: 'CUSTOMER'
+        }
+      });
+      await prisma.customer.update({
+        where: { id: customer.id },
+        data: { userId: updatedUser.id, phone: targetPhone }
+      });
+    }
+
+    const isAgent = req.user.role === 'AGENT';
+    const auditAction = isAgent ? 'AGENT_CREATED_CUSTOMER_CREDENTIALS' : 'ADMIN_SET_CUSTOMER_CREDENTIALS';
+    const notificationMessage = `Field Agent "${req.user.name}" created app login credentials for Customer "${customer.name}" (${targetPhone})`;
+
+    // Record in AuditLog for full traceability and Admin indication
+    await auditLog(
+      req.user.id,
+      auditAction,
+      'Customer',
+      customer.id,
+      {
+        performedBy: {
+          id: req.user.id,
+          name: req.user.name,
+          role: req.user.role,
+          phone: req.user.phone,
+          agentId: req.user.agentId || null
+        },
+        customer: {
+          id: customer.id,
+          name: customer.name,
+          phone: targetPhone
+        },
+        message: notificationMessage,
+        createdAt: new Date().toISOString()
+      },
+      req
+    );
+
+    res.json({
+      success: true,
+      message: isAgent 
+        ? `Credentials created for ${customer.name}. Super Admin has been notified.`
+        : `Credentials updated successfully for ${customer.name}.`,
+      data: {
+        customerId: customer.id,
+        phone: targetPhone,
+        userId: updatedUser.id,
+        indicatedToAdmin: isAgent
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

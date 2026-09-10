@@ -111,6 +111,7 @@ export const customersAPI = {
   create: (data) => api.post('/customers', data).then(extractData),
   update: (id, data) => api.put(`/customers/${id}`, data).then(extractData),
   delete: (id) => api.delete(`/customers/${id}`).then(extractData),
+  setCredentials: (id, data) => api.post(`/customers/${id}/credentials`, data).then(extractData),
 };
 
 // ─── Loans ────────────────────────────────────────────────────────────────────

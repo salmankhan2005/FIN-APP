@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 export default function AppLayout() {
-  const { user, logout, isSuperAdmin, isAdmin } = useAuth();
+  const { user, logout, isSuperAdmin, isAdmin, isCustomer } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
@@ -56,6 +56,16 @@ export default function AppLayout() {
           { to: '/settings', icon: Settings, label: 'Settings & Backup' },
         ]},
       ]
+    : isCustomer
+    ? [
+        { section: 'My Passbook', items: [
+          { to: '/', icon: LayoutDashboard, label: 'Passbook Overview' },
+          { to: '/loans', icon: Landmark, label: 'My Loans' },
+        ]},
+        { section: 'Account', items: [
+          { to: '/notifications', icon: Bell, label: 'Due Alerts' },
+        ]},
+      ]
     : [
         { section: 'My Work', items: [
           { to: '/', icon: LayoutDashboard, label: 'Home' },
@@ -84,6 +94,12 @@ export default function AppLayout() {
         { to: '/loans', icon: Landmark, label: 'Loans' },
         { to: '/collections', icon: HandCoins, label: 'Collections' },
         { to: '/settings', icon: Settings, label: 'Settings' },
+      ]
+    : isCustomer
+    ? [
+        { to: '/', icon: LayoutDashboard, label: 'Passbook' },
+        { to: '/loans', icon: Landmark, label: 'My Loans' },
+        { to: '/notifications', icon: Bell, label: 'Alerts' },
       ]
     : [
         { to: '/', icon: LayoutDashboard, label: 'Home' },
@@ -122,6 +138,142 @@ export default function AppLayout() {
           <span className="mobile-header-title">{currentPage}</span>
         </div>
         <div className="mobile-header-user" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '16px' }}>
+
+          {/* Notification Bell Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setShowNotificationDropdown(!showNotificationDropdown);
+                setShowProfileDropdown(false);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-primary)',
+                padding: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                position: 'relative'
+              }}
+              aria-label="Notifications"
+            >
+              <Bell size={20} />
+              {inAppNotifs.length > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  borderRadius: '10px',
+                  minWidth: '16px',
+                  height: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 4px',
+                  boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                }}>
+                  {inAppNotifs.length}
+                </span>
+              )}
+            </button>
+
+            {showNotificationDropdown && (
+              <>
+                <div 
+                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }} 
+                  onClick={() => setShowNotificationDropdown(false)} 
+                />
+                <div className="profile-dropdown animate-in" style={{ 
+                  zIndex: 999, 
+                  width: '320px', 
+                  right: -40, 
+                  maxHeight: '400px', 
+                  overflowY: 'auto' 
+                }}>
+                  <div style={{ 
+                    padding: '12px 16px', 
+                    borderBottom: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <strong style={{ fontSize: 13 }}>Alerts & Notifications</strong>
+                    <span className="badge badge-info" style={{ fontSize: 10 }}>
+                      {inAppNotifs.length} New
+                    </span>
+                  </div>
+
+                  {inAppNotifs.length === 0 ? (
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                      No new notifications
+                    </div>
+                  ) : (
+                    inAppNotifs.map((n) => (
+                      <div 
+                        key={n.id}
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: '1px solid var(--border-subtle)',
+                          background: n.isAgentAlert ? 'rgba(245, 158, 11, 0.06)' : 'transparent',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 4
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ 
+                            fontSize: 11, 
+                            fontWeight: 800, 
+                            color: n.isAgentAlert ? '#f59e0b' : 'var(--primary-500)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}>
+                            {n.isAgentAlert ? '🔑 Agent Credential Alert' : '📢 Reminder'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleMarkRead(n.id)}
+                            style={{ 
+                              background: 'none', 
+                              border: 'none', 
+                              fontSize: 10, 
+                              color: 'var(--text-muted)', 
+                              cursor: 'pointer' 
+                            }}
+                          >
+                            Mark read
+                          </button>
+                        </div>
+                        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: 'var(--text-primary)' }}>
+                          {n.message}
+                        </p>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                          {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    ))
+                  )}
+
+                  <div style={{ padding: '10px 16px', textAlign: 'center', background: 'var(--bg-subtle)' }}>
+                    <Link 
+                      to="/notifications" 
+                      onClick={() => setShowNotificationDropdown(false)}
+                      style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary-600)', textDecoration: 'none' }}
+                    >
+                      View All Notifications →
+                    </Link>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           <div 
             className="sidebar-avatar" 

@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { customersAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import AddCustomerModal from '../components/AddCustomerModal';
 import { isPdfDocument } from '../utils/imageCompressor';
+import toast from 'react-hot-toast';
 import {
   User, Phone, MapPin, CreditCard, Landmark, ArrowLeft,
-  ShieldCheck, Edit2, MessageCircle, Eye, ExternalLink, X, FileText
+  ShieldCheck, Edit2, MessageCircle, Eye, ExternalLink, X, FileText,
+  KeyRound, Sparkles, Send, Smartphone, CheckCircle2, Lock
 } from 'lucide-react';
 
 function formatDate(d) {
@@ -14,17 +17,64 @@ function formatDate(d) {
 
 export default function CustomerDetail() {
   const { id } = useParams();
+  const { user, isCustomer } = useAuth();
+  const isAgent = user?.role === 'AGENT';
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [modalTab, setModalTab] = useState('customer');
   const [previewImage, setPreviewImage] = useState(null);
 
+  // Credential Modal State
+  const [showCredModal, setShowCredModal] = useState(false);
+  const [credPhone, setCredPhone] = useState('');
+  const [credPassword, setCredPassword] = useState('');
+  const [credLoading, setCredLoading] = useState(false);
+  const [credSuccess, setCredSuccess] = useState(null);
+
   const fetchCustomer = () => {
     customersAPI.get(id)
       .then(r => setCustomer(r))
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+  const handleGeneratePin = () => {
+    const pin = Math.floor(100000 + Math.random() * 900000).toString();
+    setCredPassword(pin);
+  };
+
+  const handleSaveCredentials = async (e) => {
+    e.preventDefault();
+    if (!credPassword || credPassword.trim().length < 4) {
+      toast.error('Password must be at least 4 characters long');
+      return;
+    }
+    setCredLoading(true);
+    try {
+      const res = await customersAPI.setCredentials(customer.id, {
+        phone: credPhone,
+        password: credPassword
+      });
+      toast.success(res.message || 'Credentials saved successfully!');
+      setCredSuccess({
+        phone: credPhone,
+        password: credPassword,
+        indicatedToAdmin: res.data?.indicatedToAdmin
+      });
+      fetchCustomer();
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to save credentials');
+    } finally {
+      setCredLoading(false);
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!credSuccess) return;
+    const portalUrl = `${window.location.origin}/login`;
+    const message = `Hello *${customer.name}*,\n\nYour *Finova Customer Portal* login credentials are:\n\n📱 *Mobile Number:* ${credSuccess.phone}\n🔑 *Password:* ${credSuccess.password}\n🏷️ *Login Category:* Customer\n\nLogin here: ${portalUrl}\n\nTrack your active loans, weekly schedules, and receipts 24/7!`;
+    const encoded = encodeURI(message);
+    window.open(`https://wa.me/91${credSuccess.phone}?text=${encoded}`, '_blank');
   };
 
   useEffect(() => {
@@ -37,21 +87,99 @@ export default function CustomerDetail() {
   return (
     <div className="animate-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <Link to="/customers" className="btn btn-ghost" style={{ gap: 6 }}>
-          <ArrowLeft size={16} /> Back to Customers
+        <Link to={isCustomer ? "/" : "/customers"} className="btn btn-ghost" style={{ gap: 6 }}>
+          <ArrowLeft size={16} /> {isCustomer ? "Back to Passbook" : "Back to Customers"}
         </Link>
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          onClick={() => {
-            setModalTab('customer');
-            setShowEditModal(true);
-          }}
-          style={{ gap: 6 }}
-        >
-          <Edit2 size={14} /> Edit Profile & Jamin
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {!isCustomer && (
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                setCredPhone(customer.phone);
+                setCredPassword('');
+                setCredSuccess(null);
+                setShowCredModal(true);
+              }}
+              style={{ gap: 6, borderColor: '#10b981', color: '#10b981' }}
+            >
+              <KeyRound size={14} /> App Credentials
+            </button>
+          )}
+          {!isCustomer && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => {
+                setModalTab('customer');
+                setShowEditModal(true);
+              }}
+              style={{ gap: 6 }}
+            >
+              <Edit2 size={14} /> Edit Profile & Jamin
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Customer App Access & Credentials Banner (Agent / Admin only) */}
+      {!isCustomer && (
+        <div className="card mb-24" style={{
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%)',
+          border: '1px solid rgba(16, 185, 129, 0.25)',
+          padding: '16px 20px',
+          borderRadius: '16px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Smartphone size={22} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>Customer Self-Service Passbook</span>
+                  <span className="badge badge-success" style={{ fontSize: 10, padding: '2px 8px' }}>
+                    Category: Customer
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+                  Login ID: <strong style={{ color: 'var(--text-primary)' }}>{customer.phone}</strong> • Field Agents can set credentials with automated Admin notification
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCredPhone(customer.phone);
+                setCredPassword('');
+                setCredSuccess(null);
+                setShowCredModal(true);
+              }}
+              className="btn btn-primary btn-sm"
+              style={{
+                gap: 6,
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
+              }}
+            >
+              <KeyRound size={14} />
+              <span>Generate / Set App Credentials</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid-2 mb-24" style={{ alignItems: 'start' }}>
         {/* Customer Details Card */}
@@ -564,6 +692,327 @@ export default function CustomerDetail() {
           </div>
         </div>
       )}
+
+      {/* App Credentials Modal */}
+      {showCredModal && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16
+          }}
+          onClick={() => setShowCredModal(false)}
+        >
+          <div
+            className="card"
+            style={{
+              width: '100%',
+              maxWidth: 480,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              borderRadius: 20,
+              padding: 24,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              position: 'relative'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  color: '#10b981',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <KeyRound size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Customer Mobile Passbook</h3>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Generate or set app credentials</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCredModal(false)}
+                className="btn btn-ghost btn-sm"
+                style={{ borderRadius: '50%', width: 32, height: 32, padding: 0 }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Agent indication notice */}
+            <div style={{
+              background: isAgent ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.08)',
+              border: `1px solid ${isAgent ? 'rgba(245, 158, 11, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`,
+              borderRadius: 12,
+              padding: '12px 14px',
+              fontSize: 12,
+              marginBottom: 20,
+              display: 'flex',
+              gap: 10,
+              alignItems: 'flex-start'
+            }}>
+              <ShieldCheck size={18} color={isAgent ? '#f59e0b' : '#3b82f6'} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <strong style={{ color: isAgent ? '#f59e0b' : '#3b82f6' }}>
+                  {isAgent ? 'Indicated to Super Admin' : 'Admin Security Verification'}
+                </strong>
+                <p style={{ margin: '3px 0 0', color: 'var(--text-secondary)' }}>
+                  {isAgent
+                    ? 'As a Field Agent, any credentials you create or update will automatically trigger a live alert and audit entry for the Super Admin.'
+                    : 'Customer can log in using their Phone Number & Password under the "Customer" category on the mobile login page.'}
+                </p>
+              </div>
+            </div>
+
+            {credSuccess ? (
+              <div style={{ textAlign: 'center', padding: '16px 8px' }}>
+                <div style={{
+                  width: 54,
+                  height: 54,
+                  borderRadius: '50%',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  color: '#10b981',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px'
+                }}>
+                  <CheckCircle2 size={30} />
+                </div>
+                <h4 style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 18 }}>Credentials Ready!</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 20px' }}>
+                  Customer account is configured and ready for login.
+                </p>
+
+                <div style={{
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 12,
+                  padding: 16,
+                  textAlign: 'left',
+                  marginBottom: 20
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Login Role:</span>
+                    <span className="badge badge-success" style={{ fontSize: 11 }}>Customer</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Mobile Number:</span>
+                    <strong style={{ fontFamily: 'monospace', fontSize: 14 }}>{credSuccess.phone}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Password / PIN:</span>
+                    <strong style={{ fontFamily: 'monospace', fontSize: 15, color: '#10b981', letterSpacing: '1px' }}>
+                      {credSuccess.password}
+                    </strong>
+                  </div>
+                </div>
+
+                {isAgent && (
+                  <div style={{
+                    fontSize: 12,
+                    color: '#10b981',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    marginBottom: 20,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6
+                  }}>
+                    <CheckCircle2 size={14} /> Super Admin has been notified of this credential creation
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleShareWhatsApp}
+                    style={{
+                      gap: 8,
+                      background: '#25D366',
+                      borderColor: '#25D366',
+                      justifyContent: 'center',
+                      fontWeight: 700
+                    }}
+                  >
+                    <Send size={16} /> Share Credentials via WhatsApp
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => {
+                      setCredSuccess(null);
+                      setShowCredModal(false);
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveCredentials}>
+                <div className="form-group" style={{ marginBottom: 16 }}>
+                  <label className="form-label" style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
+                    Customer Name
+                  </label>
+                  <input
+                    type="text"
+                    value={customer.name}
+                    disabled
+                    style={{
+                      width: '100%',
+                      height: '42px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--border-subtle, #e2e8f0)',
+                      background: 'var(--bg-secondary, #f8fafc)',
+                      padding: '0 12px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: 'var(--text-primary, #0f172a)',
+                      opacity: 0.85
+                    }}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 16 }}>
+                  <label className="form-label" style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
+                    Mobile Number (Login ID)
+                  </label>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: '42px',
+                    borderRadius: '10px',
+                    border: '1.5px solid var(--border-default, #e2e8f0)',
+                    background: 'var(--bg-primary, #ffffff)',
+                    padding: '0 12px'
+                  }}>
+                    <Phone size={16} color="var(--text-muted, #64748b)" style={{ marginRight: 8, flexShrink: 0 }} />
+                    <input
+                      type="tel"
+                      value={credPhone}
+                      onChange={e => setCredPhone(e.target.value)}
+                      placeholder="e.g. 9876543210"
+                      required
+                      style={{
+                        width: '100%',
+                        border: 'none',
+                        outline: 'none',
+                        background: 'transparent',
+                        fontSize: '14px',
+                        color: 'var(--text-primary, #0f172a)'
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                    Customer will use this phone number on the login page under the <strong>Customer</strong> tab.
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 24 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label className="form-label" style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>
+                      Password / 6-Digit PIN
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleGeneratePin}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        color: '#059669',
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '3px 8px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Sparkles size={12} /> Auto-Generate PIN
+                    </button>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: '42px',
+                    borderRadius: '10px',
+                    border: '1.5px solid var(--border-default, #e2e8f0)',
+                    background: 'var(--bg-primary, #ffffff)',
+                    padding: '0 12px'
+                  }}>
+                    <Lock size={16} color="var(--text-muted, #64748b)" style={{ marginRight: 8, flexShrink: 0 }} />
+                    <input
+                      type="text"
+                      value={credPassword}
+                      onChange={e => setCredPassword(e.target.value)}
+                      placeholder="Enter password or click Auto-Generate"
+                      required
+                      style={{
+                        width: '100%',
+                        border: 'none',
+                        outline: 'none',
+                        background: 'transparent',
+                        fontSize: '14px',
+                        letterSpacing: credPassword ? '1px' : 'normal',
+                        fontFamily: credPassword ? 'monospace' : 'inherit',
+                        color: 'var(--text-primary, #0f172a)'
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                    Recommended: 6-digit numeric PIN for simple customer mobile access.
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => setShowCredModal(false)}
+                    disabled={credLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={credLoading}
+                    style={{
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      borderColor: '#10b981',
+                      minWidth: 140
+                    }}
+                  >
+                    {credLoading ? 'Saving...' : 'Set Credentials'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

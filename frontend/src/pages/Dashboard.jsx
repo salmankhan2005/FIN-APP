@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { dashboardAPI, loansAPI } from '../services/api';
-import { Landmark, Users, HandCoins, AlertTriangle, CheckCircle, Plus, TrendingUp, IndianRupee, Calendar, Clock, BarChart3, ChevronRight, PieChart, X, Search, FileText } from 'lucide-react';
+import { Landmark, Users, HandCoins, AlertTriangle, CheckCircle, Plus, TrendingUp, IndianRupee, Calendar, Clock, BarChart3, ChevronRight, PieChart, X, Search, FileText, KeyRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer, ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import AgentCustomerCredentialSection from '../components/AgentCustomerCredentialSection';
 
 function fmt(val) {
   if (!val && val !== 0) return '₹0';
@@ -41,8 +42,9 @@ const StatCard = ({ icon: Icon, label, value, color, to, onClick }) => {
 };
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, isCustomer, isAgent, isAdmin } = useAuth();
   const [data, setData] = useState(null);
+  const [customerLoans, setCustomerLoans] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Breakdown modal states
@@ -53,8 +55,20 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = () => {
-    Promise.all([dashboardAPI.summary(), dashboardAPI.agent()])
-      .then(([s, a]) => setData({ summary: s, agent: a }))
+    if (isCustomer) {
+      loansAPI.list({ limit: 50 })
+        .then(res => {
+          setCustomerLoans(Array.isArray(res) ? res : (res?.loans || []));
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+      return;
+    }
+
+    const promises = [dashboardAPI.agent()];
+    if (isAdmin) promises.push(dashboardAPI.summary());
+    Promise.all(promises)
+      .then(([a, s]) => setData({ summary: s, agent: a }))
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -63,7 +77,7 @@ export default function Dashboard() {
     loadData();
     const interval = setInterval(loadData, 30000); // 30s auto-refresh
     return () => clearInterval(interval);
-  }, []);
+  }, [isCustomer]);
 
   const openBreakdownModal = (type, loanType = 'ALL') => {
     setActiveModal(type);
@@ -81,11 +95,216 @@ export default function Dashboard() {
       .finally(() => setLoadingLoans(false));
   };
 
-  if (loading && !data) return <div className="loading-page"><div className="spinner" /></div>;
+  if (loading && !data && customerLoans.length === 0) return <div className="loading-page"><div className="spinner" /></div>;
 
+  // ─── Customer Self-Service Passbook Portal (Zero credential generator) ───
+  if (isCustomer) {
+    const activeLoans = customerLoans.filter(l => l.status === 'ACTIVE');
+    const totalBorrowed = customerLoans.reduce((sum, l) => sum + (l.principalAmount || 0), 0);
+    const totalPayable = customerLoans.reduce((sum, l) => sum + (l.totalPayable || l.principalAmount || 0), 0);
+    const totalPaid = customerLoans.reduce((sum, l) => {
+      const p = (l.repayments || []).reduce((acc, r) => acc + (r.paidAmount || 0), 0);
+      return sum + p;
+    }, 0);
+    const totalRemaining = Math.max(0, totalPayable - totalPaid);
+
+    return (
+      <div className="animate-in" style={{ paddingBottom: '50px' }}>
+        {/* Customer Welcome Header */}
+        <div style={{
+          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+          color: '#ffffff',
+          padding: '22px 24px',
+          borderRadius: '20px',
+          marginBottom: '20px',
+          boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.2)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="badge badge-success" style={{ fontSize: 10, padding: '2px 8px' }}>
+                  Customer Mobile Passbook
+                </span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+                  ID: {user?.phone}
+                </span>
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 800, margin: '8px 0 4px', letterSpacing: '-0.5px' }}>
+                Welcome, {user?.name} 👋
+              </h2>
+              <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
+                Track your active loan schedules, weekly dues, and live balances 24/7
+              </p>
+            </div>
+            <Link
+              to="/loans"
+              className="btn btn-sm"
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                color: '#ffffff',
+                border: '1px solid rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(4px)',
+                borderRadius: '100px',
+                gap: 6
+              }}
+            >
+              <Landmark size={14} /> View All Loans ({customerLoans.length})
+            </Link>
+          </div>
+        </div>
+
+        {/* Customer Metrics */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: 12,
+          marginBottom: 24
+        }}>
+          <div className="stat-card green" style={{ padding: '16px' }}>
+            <div className="stat-icon green" style={{ marginBottom: 10 }}><Landmark size={18} /></div>
+            <div className="stat-value" style={{ fontSize: '1.2rem', fontWeight: 800 }}>{activeLoans.length}</div>
+            <div className="stat-label" style={{ fontSize: '11px' }}>Active Loans</div>
+          </div>
+          <div className="stat-card blue" style={{ padding: '16px' }}>
+            <div className="stat-icon blue" style={{ marginBottom: 10 }}><IndianRupee size={18} /></div>
+            <div className="stat-value" style={{ fontSize: '1.2rem', fontWeight: 800 }}>{fmt(totalBorrowed)}</div>
+            <div className="stat-label" style={{ fontSize: '11px' }}>Total Borrowed</div>
+          </div>
+          <div className="stat-card purple" style={{ padding: '16px' }}>
+            <div className="stat-icon purple" style={{ marginBottom: 10 }}><CheckCircle size={18} /></div>
+            <div className="stat-value" style={{ fontSize: '1.2rem', fontWeight: 800 }}>{fmt(totalPaid)}</div>
+            <div className="stat-label" style={{ fontSize: '11px' }}>Total Repaid</div>
+          </div>
+          <div className="stat-card yellow" style={{ padding: '16px' }}>
+            <div className="stat-icon yellow" style={{ marginBottom: 10 }}><Clock size={18} /></div>
+            <div className="stat-value" style={{ fontSize: '1.2rem', fontWeight: 800 }}>{fmt(totalRemaining)}</div>
+            <div className="stat-label" style={{ fontSize: '11px' }}>Remaining Balance</div>
+          </div>
+        </div>
+
+        {/* My Loan Passbooks List */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--text-primary)' }}>
+            My Active Loan Passbooks
+          </div>
+        </div>
+
+        {activeLoans.length === 0 ? (
+          <div className="card" style={{ padding: '36px 20px', textAlign: 'center', borderRadius: '16px' }}>
+            <div style={{
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: 'rgba(16, 185, 129, 0.12)',
+              color: '#10b981',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 12px'
+            }}>
+              <CheckCircle size={26} />
+            </div>
+            <h4 style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 16 }}>No Active Loans</h4>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+              You do not have any running dues at this moment. Contact your Field Agent for assistance.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {activeLoans.map(loan => {
+              const paid = (loan.repayments || []).reduce((acc, r) => acc + (r.paidAmount || 0), 0);
+              const payable = loan.totalPayable || loan.principalAmount || 1;
+              const pct = Math.min(100, Math.round((paid / payable) * 100));
+              const remaining = Math.max(0, payable - paid);
+
+              return (
+                <div key={loan.id} className="card" style={{
+                  padding: '20px',
+                  borderRadius: '16px',
+                  border: '1px solid var(--border-default, #e2e8f0)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: 16, color: 'var(--text-primary)' }}>{loan.loanNumber}</strong>
+                        <span className="badge badge-success" style={{ fontSize: 10 }}>ACTIVE</span>
+                        <span className="badge badge-info" style={{ fontSize: 10 }}>{loan.interestType}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                        Disbursed: {new Date(loan.disbursedAt || loan.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </div>
+                    </div>
+
+                    <Link
+                      to={`/loans/${loan.id}`}
+                      className="btn btn-primary btn-sm"
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: 12,
+                        borderRadius: '8px',
+                        fontWeight: 700,
+                        gap: 6
+                      }}
+                    >
+                      <span>Passbook Details</span>
+                      <ChevronRight size={14} />
+                    </Link>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Repayment Progress</span>
+                      <strong>{pct}% ({fmt(paid)} of {fmt(payable)})</strong>
+                    </div>
+                    <div style={{
+                      width: '100%',
+                      height: '8px',
+                      background: 'rgba(0,0,0,0.06)',
+                      borderRadius: '100px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        width: `${pct}%`,
+                        height: '100%',
+                        background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                        borderRadius: '100px'
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Balance stats */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 10,
+                    background: 'var(--bg-primary, #f8fafc)',
+                    padding: '12px 14px',
+                    borderRadius: '12px',
+                    fontSize: 12
+                  }}>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)' }}>Principal Amount:</span>
+                      <div style={{ fontWeight: 700, fontSize: 15, marginTop: 2 }}>{fmt(loan.principalAmount)}</div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)' }}>Remaining Due:</span>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: '#f59e0b', marginTop: 2 }}>{fmt(remaining)}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── Admin & Field Agent Portal ───
   const s = data?.summary;
   const a = data?.agent;
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
 
   // Filter breakdown loans by search and loan type
   const filteredLoans = breakdownLoans.filter(l => {
@@ -127,6 +346,24 @@ export default function Dashboard() {
         <Link to="/collections" className="btn btn-success btn-sm" style={{ flexShrink: 0, padding: '8px 16px', borderRadius: '100px' }}>
           <HandCoins size={16}/> Collect
         </Link>
+        {isAgent && (
+          <a
+            href="#agent-credentials-section"
+            className="btn btn-outline btn-sm"
+            style={{
+              flexShrink: 0,
+              padding: '8px 16px',
+              borderRadius: '100px',
+              borderColor: '#10b981',
+              color: '#10b981',
+              background: 'rgba(16, 185, 129, 0.08)',
+              fontWeight: 700,
+              gap: 6
+            }}
+          >
+            <KeyRound size={16} /> Customer Credentials
+          </a>
+        )}
       </div>
 
       {isAdmin ? (
@@ -282,6 +519,11 @@ export default function Dashboard() {
               <div className="stat-value" style={{ fontSize: '1.2rem', fontWeight: 800 }}>{a?.totalCollected?.count || 0}</div>
               <div className="stat-label" style={{ fontSize: '11px' }}>Total Collections Made</div>
             </div>
+          </div>
+
+          {/* Dedicated Section to Create Customer Credentials in Agent Portal */}
+          <div id="agent-credentials-section" style={{ scrollMarginTop: 80 }}>
+            <AgentCustomerCredentialSection />
           </div>
         </>
       )}

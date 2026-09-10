@@ -89,17 +89,49 @@ router.post('/trigger', async (req, res) => {
   }
 });
 
-// Get In-App Notifications for current user (Agent/Customer)
+// Get In-App Notifications for current user (Admin/Agent/Customer)
 router.get('/in-app', async (req, res) => {
   try {
-    // If it's an agent, maybe they want to see alerts? 
-    // Usually customers get notifications. For now, fetch ALL APP notifications for dashboard demo.
-    const logs = await prisma.notificationLog.findMany({
-      where: { type: 'APP', readAt: null },
-      orderBy: { createdAt: 'desc' },
-      include: { customer: { select: { name: true } } }
+    const [appLogs, agentCredentialLogs] = await Promise.all([
+      prisma.notificationLog.findMany({
+        where: { type: 'APP', readAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 15,
+        include: { customer: { select: { name: true, phone: true } } }
+      }),
+      prisma.auditLog.findMany({
+        where: { action: 'AGENT_CREATED_CUSTOMER_CREDENTIALS' },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      })
+    ]);
+
+    // Format agent credential logs as notifications for Admin
+    const credentialAlerts = agentCredentialLogs.map(log => {
+      let parsed = {};
+      try {
+        parsed = typeof log.details === 'string' ? JSON.parse(log.details) : (log.details || {});
+      } catch (_) {}
+
+      return {
+        id: `agent-cred-${log.id}`,
+        type: 'AGENT_CREDENTIAL_CREATED',
+        isAgentAlert: true,
+        title: 'Agent Created Customer Credentials',
+        message: parsed.message || 'Field Agent created login credentials for Customer',
+        agentName: parsed.performedBy?.name || 'Agent',
+        customerName: parsed.customer?.name || 'Customer',
+        customerPhone: parsed.customer?.phone || '',
+        phone: parsed.customer?.phone || '',
+        customerId: parsed.customer?.id || log.entityId,
+        indicatedToAdmin: true,
+        createdAt: log.createdAt,
+        readAt: null
+      };
     });
-    res.json({ success: true, data: logs });
+
+    const combined = [...credentialAlerts, ...appLogs];
+    res.json({ success: true, data: combined });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -108,6 +140,9 @@ router.get('/in-app', async (req, res) => {
 // Mark as read
 router.put('/:id/read', async (req, res) => {
   try {
+    if (req.params.id.startsWith('agent-cred-')) {
+      return res.json({ success: true, message: 'Alert acknowledged' });
+    }
     await prisma.notificationLog.update({
       where: { id: req.params.id },
       data: { readAt: new Date() }

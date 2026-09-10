@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { notificationsAPI } from '../services/api';
 import toast from 'react-hot-toast';
-import { Bell, Send, AlertTriangle, Settings, RefreshCw, CheckCircle } from 'lucide-react';
+import { Bell, Send, AlertTriangle, Settings, RefreshCw, CheckCircle, KeyRound, ShieldAlert, Check, Eye, UserCheck } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function NotificationsDashboard() {
+  const { isCustomer } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [settings, setSettings] = useState(null);
   const [history, setHistory] = useState([]);
+  const [inAppAlerts, setInAppAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
 
@@ -15,14 +19,25 @@ export default function NotificationsDashboard() {
     Promise.all([
       notificationsAPI.getDashboard(),
       notificationsAPI.getSettings(),
-      notificationsAPI.getHistory(20)
-    ]).then(([dashRes, setRes, histRes]) => {
+      notificationsAPI.getHistory(20),
+      notificationsAPI.getInApp()
+    ]).then(([dashRes, setRes, histRes, inAppRes]) => {
       setDashboard(dashRes);
       setSettings(setRes);
       setHistory(histRes);
+      setInAppAlerts(inAppRes || []);
     }).catch(err => {
       toast.error('Failed to load notifications data');
     }).finally(() => setLoading(false));
+  };
+
+  const handleMarkAlertRead = (id) => {
+    notificationsAPI.markRead(id).then(() => {
+      setInAppAlerts(prev => prev.filter(a => a.id !== id));
+      toast.success('Alert marked as reviewed');
+    }).catch(() => {
+      toast.error('Failed to update alert');
+    });
   };
 
   useEffect(() => {
@@ -83,6 +98,131 @@ export default function NotificationsDashboard() {
           <div className="stat-value" style={{ color: 'var(--success-600)' }}>{dashboard?.sent || 0}</div>
         </div>
       </div>
+
+      {/* Agent Credential Activity - Indicated to Super Admin (hidden for customers) */}
+      {!isCustomer && (
+      <div className="card mb-24" style={{
+        border: '1px solid rgba(16, 185, 129, 0.35)',
+        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(245, 158, 11, 0.05) 100%)',
+        padding: 20,
+        borderRadius: 16,
+        marginBottom: 24
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: 'rgba(16, 185, 129, 0.15)',
+              color: '#10b981',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <KeyRound size={18} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Agent Credential & Field Alerts</span>
+                <span className="badge badge-success" style={{ fontSize: 10, padding: '2px 8px' }}>
+                  {inAppAlerts.filter(a => a.isAgentAlert).length} Active Indications
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                Field Agent credential creations automatically indicated to Super Admin with audit verification
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {inAppAlerts.filter(a => a.isAgentAlert).length === 0 ? (
+          <div style={{
+            padding: '16px 20px',
+            textAlign: 'center',
+            background: 'var(--bg-secondary)',
+            borderRadius: 12,
+            color: 'var(--text-muted)',
+            fontSize: 13
+          }}>
+            No pending agent credential alerts. All field credential actions are up to date.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {inAppAlerts.filter(a => a.isAgentAlert).map(alert => (
+              <div
+                key={alert.id}
+                style={{
+                  background: 'var(--card-bg, #ffffff)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 12,
+                  padding: '14px 16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 12
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    color: '#f59e0b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    marginTop: 2
+                  }}>
+                    <UserCheck size={16} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span>Agent: <strong style={{ color: 'var(--primary-500)' }}>{alert.agentName || 'Field Agent'}</strong></span>
+                      <span className="badge badge-warning" style={{ fontSize: 10 }}>
+                        Customer Credential Created
+                      </span>
+                      <span className="badge badge-outline" style={{ fontSize: 10, borderColor: '#10b981', color: '#10b981' }}>
+                        🛡️ Indicated to Admin
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-primary)', marginTop: 4 }}>
+                      Customer: <strong>{alert.customerName || 'N/A'}</strong> (Phone: <span style={{ fontFamily: 'monospace' }}>{alert.customerPhone || 'N/A'}</span>)
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                      Created: {new Date(alert.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {alert.customerId && (
+                    <Link
+                      to={`/customers/${alert.customerId}`}
+                      className="btn btn-outline btn-xs"
+                      style={{ gap: 4 }}
+                    >
+                      <Eye size={12} /> View Customer
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleMarkAlertRead(alert.id)}
+                    className="btn btn-ghost btn-xs"
+                    style={{ gap: 4, color: 'var(--text-muted)' }}
+                  >
+                    <Check size={12} /> Acknowledge
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      )}
 
       {/* Settings */}
       <div className="card" style={{ padding: 16, marginBottom: 24 }}>

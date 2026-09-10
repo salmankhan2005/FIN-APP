@@ -5,8 +5,9 @@ import AddCustomerModal from '../components/AddCustomerModal';
 import toast from 'react-hot-toast';
 import {
   Plus, Search, Eye, Edit2, Trash2, Phone, ShieldCheck,
-  MapPin, MessageCircle, Table, LayoutGrid, X, Users
+  MapPin, MessageCircle, Table, LayoutGrid, X, Users, KeyRound
 } from 'lucide-react';
+import AgentCustomerCredentialSection from '../components/AgentCustomerCredentialSection';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
@@ -17,6 +18,7 @@ export default function CustomersPage() {
   const [editCustomer, setEditCustomer] = useState(null);
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'NO_LOANS'
+  const [credModalCustomer, setCredModalCustomer] = useState(null);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -441,6 +443,20 @@ export default function CustomersPage() {
                           style={{
                             padding: '6px 8px',
                             borderRadius: 8,
+                            color: '#10b981',
+                            background: 'rgba(16, 185, 129, 0.08)'
+                          }}
+                          onClick={() => setCredModalCustomer(c)}
+                          title="Generate App Credentials"
+                        >
+                          <KeyRound size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          style={{
+                            padding: '6px 8px',
+                            borderRadius: 8,
                             color: '#d97706',
                             background: 'rgba(217, 119, 6, 0.06)'
                           }}
@@ -567,6 +583,15 @@ export default function CustomersPage() {
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
+                    onClick={() => setCredModalCustomer(c)}
+                    title="Generate App Credentials"
+                    style={{ border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 8, color: '#10b981', background: 'rgba(16, 185, 129, 0.08)' }}
+                  >
+                    <KeyRound size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
                     onClick={() => handleDelete(c)}
                     title="Delete Customer"
                     style={{ border: '1px solid var(--border-subtle)', borderRadius: 8, color: 'var(--danger-500)' }}
@@ -587,6 +612,42 @@ export default function CustomersPage() {
         onSuccess={handleCustomerSaved}
         editCustomer={editCustomer}
       />
+
+      {/* Customer Credentials Modal */}
+      {credModalCustomer && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16
+          }}
+          onClick={() => setCredModalCustomer(null)}
+        >
+          <div
+            style={{ width: '100%', maxWidth: 560, maxHeight: '92vh', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <AgentCustomerCredentialSection preselectedCustomerId={credModalCustomer.id} />
+            <div style={{ textAlign: 'center', marginTop: 8 }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ color: '#ffffff', background: 'rgba(0,0,0,0.5)', borderRadius: 20 }}
+                onClick={() => setCredModalCustomer(null)}
+              >
+                Close Window
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

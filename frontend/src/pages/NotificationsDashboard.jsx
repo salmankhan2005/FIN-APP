@@ -242,15 +242,75 @@ export default function NotificationsDashboard() {
         </div>
 
         <div style={{ padding: '12px 0' }}>
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>Days Before Due Date (Raw JSON)</div>
-          <input 
-            type="text" 
-            className="form-input" 
-            value={typeof settings?.daysBeforeDue === 'string' ? settings.daysBeforeDue : JSON.stringify(settings?.daysBeforeDue)}
-            onChange={e => setSettings({...settings, daysBeforeDue: e.target.value})}
-            onBlur={e => handleSettingChange('daysBeforeDue', JSON.parse(e.target.value))}
-          />
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Example: [0, 1] means send on Same Day (0) and 1 Day Before (1). Use negative for overdue e.g., [-1]</div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>When to Send Reminders</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+            Select the days on which customers should receive a payment reminder. Toggle each option on or off.
+          </div>
+
+          {/* Chip Toggle Selector */}
+          {(() => {
+            const raw = settings?.daysBeforeDue;
+            const selected = Array.isArray(raw) ? raw : (typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return []; } })() : []);
+
+            const presets = [
+              { label: '3 Days Before', value: 3, emoji: '📅' },
+              { label: '2 Days Before', value: 2, emoji: '📆' },
+              { label: '1 Day Before',  value: 1, emoji: '⏰' },
+              { label: 'Due Day',       value: 0, emoji: '🔔' },
+              { label: '1 Day Overdue', value: -1, emoji: '⚠️' },
+              { label: '2 Days Overdue',value: -2, emoji: '🚨' },
+            ];
+
+            const toggle = (val) => {
+              const next = selected.includes(val)
+                ? selected.filter(v => v !== val)
+                : [...selected, val].sort((a, b) => b - a);
+              setSettings({ ...settings, daysBeforeDue: next });
+              handleSettingChange('daysBeforeDue', next);
+            };
+
+            return (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {presets.map(p => {
+                  const active = selected.includes(p.value);
+                  return (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => toggle(p.value)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
+                        fontWeight: 600, fontSize: 13, transition: 'all 0.18s',
+                        border: active ? '2px solid var(--primary-500)' : '2px solid var(--border-color)',
+                        background: active ? 'rgba(99,102,241,0.12)' : 'var(--bg-secondary)',
+                        color: active ? 'var(--primary-500)' : 'var(--text-muted)',
+                        boxShadow: active ? '0 0 0 3px rgba(99,102,241,0.15)' : 'none',
+                      }}
+                    >
+                      <span>{p.emoji}</span>
+                      <span>{p.label}</span>
+                      {active && <span style={{ fontSize: 10, background: 'var(--primary-500)', color: '#fff', borderRadius: 50, width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--bg-secondary)', fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>📋</span>
+            <span>
+              <strong>Active schedule: </strong>
+              {(() => {
+                const raw = settings?.daysBeforeDue;
+                const arr = Array.isArray(raw) ? raw : (typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return []; } })() : []);
+                if (!arr.length) return 'No days selected — reminders are disabled.';
+                const labels = { 3:'3 Days Before', 2:'2 Days Before', 1:'1 Day Before', 0:'Due Day', '-1':'1 Day Overdue', '-2':'2 Days Overdue' };
+                return arr.sort((a, b) => b - a).map(v => labels[v] || `${Math.abs(v)} day${Math.abs(v)>1?'s':''} ${v<0?'overdue':'before'}`).join(', ');
+              })()}
+            </span>
+          </div>
         </div>
       </div>
 

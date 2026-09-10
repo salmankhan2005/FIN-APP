@@ -5,30 +5,30 @@ import { initFirebaseForSuperAdmin } from '../services/firebase';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check current tab's sessionStorage first, then fallback to localStorage
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+  const [user, setUser] = useState(() => {
+    if (typeof window === 'undefined') return null;
     const storedUser = sessionStorage.getItem('user') || localStorage.getItem('user');
-
-    if (token && storedUser) {
+    if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        // Lock this tab's session explicitly
-        sessionStorage.setItem('token', token);
-        sessionStorage.setItem('user', storedUser);
-
         if (parsedUser?.role === 'ADMIN') {
           initFirebaseForSuperAdmin(parsedUser);
         }
+        return parsedUser;
       } catch (e) {
         console.error('Failed to parse stored user:', e);
+        return null;
       }
-      setLoading(false);
+    }
+    return null;
+  });
+  
+  const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+
+    if (token && user) {
       // Verify and sync user details in the background
       authAPI.me()
         .then(data => {
@@ -55,8 +55,6 @@ export function AuthProvider({ children }) {
             setUser(null);
           }
         });
-    } else {
-      setLoading(false);
     }
   }, []);
 
@@ -127,6 +125,8 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    // Keep onboarding flag so the user sees role selection, not splash, on next visit
+    // localStorage.removeItem('finova_onboarding_done'); // uncomment to force full onboarding again
     setUser(null);
   };
 

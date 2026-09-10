@@ -75,7 +75,8 @@ function OnboardingGate() {
   const [step, setStep] = useState(() => {
     // If already logged in, skip onboarding
     if (user) return STEP_APP;
-    const seen = sessionStorage.getItem('finova_onboarding_done');
+    // Check both sessionStorage and localStorage so it persists across refreshes
+    const seen = sessionStorage.getItem('finova_onboarding_done') || localStorage.getItem('finova_onboarding_done');
     return seen ? STEP_ROLE : STEP_SPLASH;
   });
 
@@ -85,6 +86,7 @@ function OnboardingGate() {
   useEffect(() => {
     if (user && step !== STEP_APP) {
       sessionStorage.setItem('finova_onboarding_done', 'true');
+      localStorage.setItem('finova_onboarding_done', 'true');
       setStep(STEP_APP);
     }
   }, [user]);

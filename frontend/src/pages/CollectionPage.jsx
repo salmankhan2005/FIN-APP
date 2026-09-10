@@ -338,6 +338,7 @@ export default function CollectionPage() {
                   <input className="form-input" placeholder="UPI / Txn ID" value={payForm.reference}
                     onChange={e => setPayForm({ ...payForm, reference: e.target.value })} />
                 </div>
+              </div>
               <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
                 <button
                   type="button"

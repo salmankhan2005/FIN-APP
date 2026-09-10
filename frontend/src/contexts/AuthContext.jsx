@@ -123,22 +123,10 @@ export function AuthProvider({ children }) {
     try {
       await authAPI.logout();
     } catch (e) {}
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('refreshToken');
-    sessionStorage.removeItem('user');
-    // Only remove from localStorage if it belongs to current tab's user
-    try {
-      const localUser = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!localUser.id || localUser.id === user?.id) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-      }
-    } catch {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-    }
+    sessionStorage.clear();
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
     setUser(null);
   };
 

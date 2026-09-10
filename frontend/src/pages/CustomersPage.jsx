@@ -5,11 +5,14 @@ import AddCustomerModal from '../components/AddCustomerModal';
 import toast from 'react-hot-toast';
 import {
   Plus, Search, Eye, Edit2, Trash2, Phone, ShieldCheck,
-  MapPin, MessageCircle, Table, LayoutGrid, X, Users, KeyRound
+  MapPin, MessageCircle, Table, LayoutGrid, X, Users, KeyRound, Lock, RefreshCw
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import AgentCustomerCredentialSection from '../components/AgentCustomerCredentialSection';
 
 export default function CustomersPage() {
+  const { isAdmin, isSuperAdmin } = useAuth();
+  const canResetCredentials = isAdmin || isSuperAdmin;
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -437,20 +440,55 @@ export default function CustomersPage() {
                         >
                           <Eye size={15} />
                         </Link>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          style={{
-                            padding: '6px 8px',
-                            borderRadius: 8,
-                            color: '#10b981',
-                            background: 'rgba(16, 185, 129, 0.08)'
-                          }}
-                          onClick={() => setCredModalCustomer(c)}
-                          title="Generate App Credentials"
-                        >
-                          <KeyRound size={15} />
-                        </button>
+                        {/* Credential button — locked after first creation unless admin */}
+                        {c.userId ? (
+                          canResetCredentials ? (
+                            // Admin: show active reset button
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              style={{
+                                padding: '6px 8px', borderRadius: 8,
+                                color: '#f59e0b', background: 'rgba(245,158,11,0.10)',
+                                border: '1px solid rgba(245,158,11,0.25)'
+                              }}
+                              onClick={() => setCredModalCustomer(c)}
+                              title="Reset / Update App Credentials"
+                            >
+                              <RefreshCw size={15} />
+                            </button>
+                          ) : (
+                            // Agent: disabled — credentials already set
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              disabled
+                              style={{
+                                padding: '6px 8px', borderRadius: 8,
+                                color: '#9ca3af', background: 'rgba(156,163,175,0.10)',
+                                border: '1px solid rgba(156,163,175,0.2)',
+                                cursor: 'not-allowed', opacity: 0.6
+                              }}
+                              title="Credentials already set — only Admin can reset"
+                            >
+                              <Lock size={15} />
+                            </button>
+                          )
+                        ) : (
+                          // No credentials yet — anyone can create
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            style={{
+                              padding: '6px 8px', borderRadius: 8,
+                              color: '#10b981', background: 'rgba(16, 185, 129, 0.08)'
+                            }}
+                            onClick={() => setCredModalCustomer(c)}
+                            title="Generate App Credentials"
+                          >
+                            <KeyRound size={15} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"
@@ -580,15 +618,40 @@ export default function CustomersPage() {
                   >
                     <Edit2 size={14} />
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setCredModalCustomer(c)}
-                    title="Generate App Credentials"
-                    style={{ border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 8, color: '#10b981', background: 'rgba(16, 185, 129, 0.08)' }}
-                  >
-                    <KeyRound size={14} />
-                  </button>
+                  {/* Credential button — locked after first creation unless admin */}
+                  {c.userId ? (
+                    canResetCredentials ? (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setCredModalCustomer(c)}
+                        title="Reset / Update App Credentials"
+                        style={{ border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, color: '#f59e0b', background: 'rgba(245,158,11,0.08)' }}
+                      >
+                        <RefreshCw size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        disabled
+                        title="Credentials already set — only Admin can reset"
+                        style={{ border: '1px solid rgba(156,163,175,0.2)', borderRadius: 8, color: '#9ca3af', opacity: 0.5, cursor: 'not-allowed' }}
+                      >
+                        <Lock size={14} />
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setCredModalCustomer(c)}
+                      title="Generate App Credentials"
+                      style={{ border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 8, color: '#10b981', background: 'rgba(16, 185, 129, 0.08)' }}
+                    >
+                      <KeyRound size={14} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"

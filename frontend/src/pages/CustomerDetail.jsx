@@ -92,20 +92,35 @@ export default function CustomerDetail() {
         </Link>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {!isCustomer && (
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => {
-                setCredPhone(customer.phone);
-                setCredPassword('');
-                setCredSuccess(null);
-                setShowCredModal(true);
-              }}
-              style={{ gap: 6, borderColor: '#10b981', color: '#10b981' }}
-            >
-              <KeyRound size={14} /> App Credentials
-            </button>
+            /* Credential button — locked for agents once set; always active for admins */
+            customer.userId && isAgent ? (
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                disabled
+                style={{ gap: 6, borderColor: '#9ca3af', color: '#9ca3af', opacity: 0.55, cursor: 'not-allowed' }}
+                title="Credentials already set — only Admin can reset"
+              >
+                <Lock size={14} /> Credentials Set
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => {
+                  setCredPhone(customer.phone);
+                  setCredPassword('');
+                  setCredSuccess(null);
+                  setShowCredModal(true);
+                }}
+                style={{ gap: 6, borderColor: customer.userId ? '#f59e0b' : '#10b981', color: customer.userId ? '#f59e0b' : '#10b981' }}
+                title={customer.userId ? 'Reset / Update App Credentials' : 'Generate App Credentials'}
+              >
+                {customer.userId ? <><Lock size={14} /> Reset Credentials</> : <><KeyRound size={14} /> App Credentials</>}
+              </button>
+            )
           )}
+
           {!isCustomer && (
             <button
               type="button"
@@ -116,7 +131,7 @@ export default function CustomerDetail() {
               }}
               style={{ gap: 6 }}
             >
-              <Edit2 size={14} /> Edit Profile & Jamin
+              <Edit2 size={14} /> Edit Profile &amp; Jamin
             </button>
           )}
         </div>

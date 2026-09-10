@@ -34,6 +34,7 @@ router.get('/', authenticate, async (req, res) => {
             where: { status: 'ACTIVE' },
             select: { id: true, loanNumber: true, totalPayable: true, status: true },
           },
+          user: { select: { id: true } },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -279,6 +280,17 @@ router.post('/:id/credentials', authenticate, authorize('ADMIN', 'AGENT'), async
       return res.status(404).json({ success: false, message: 'Customer not found' });
     }
 
+    const isAgent = req.user.role === 'AGENT';
+
+    // Agents can only create credentials ONCE per customer.
+    // If a user account already exists for this customer, block the agent.
+    if (isAgent && customer.userId) {
+      return res.status(403).json({
+        success: false,
+        message: `Credentials already exist for ${customer.name}. Only an Admin can reset them.`
+      });
+    }
+
     const bcrypt = require('bcryptjs');
     const passwordHash = await bcrypt.hash(password.trim(), 12);
 
@@ -312,7 +324,6 @@ router.post('/:id/credentials', authenticate, authorize('ADMIN', 'AGENT'), async
       });
     }
 
-    const isAgent = req.user.role === 'AGENT';
     const auditAction = isAgent ? 'AGENT_CREATED_CUSTOMER_CREDENTIALS' : 'ADMIN_SET_CUSTOMER_CREDENTIALS';
     const notificationMessage = `Field Agent "${req.user.name}" created app login credentials for Customer "${customer.name}" (${targetPhone})`;
 

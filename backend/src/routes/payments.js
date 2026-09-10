@@ -632,6 +632,22 @@ router.get('/', authenticate, async (req, res) => {
       if (to) where.collectedAt.lte = new Date(to);
     }
 
+    if (req.user.role === 'CUSTOMER') {
+      const customer = await prisma.customer.findFirst({
+        where: {
+          OR: [
+            { userId: req.user.id },
+            ...(req.user.phone ? [{ phone: req.user.phone }] : [])
+          ]
+        }
+      });
+      if (customer) {
+        where.repayment = { loan: { customerId: customer.id } };
+      } else {
+        where.id = 'non-existent-id';
+      }
+    }
+
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
         where,

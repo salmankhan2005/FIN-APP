@@ -19,9 +19,13 @@ router.get('/', authenticate, async (req, res) => {
       ];
     }
 
-    // Agents can see all active customers to create new loans
+    // Customers can strictly only see their own customer profile
     if (req.user.role === 'CUSTOMER') {
-      where.userId = req.user.id;
+      const userPhone = req.user.phone;
+      where.OR = [
+        { userId: req.user.id },
+        ...(userPhone ? [{ phone: userPhone }] : [])
+      ];
     }
 
     const [customers, total, credentialLogs] = await Promise.all([
@@ -71,6 +75,13 @@ router.get('/:id', authenticate, async (req, res) => {
       },
     });
     if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+
+    if (req.user.role === 'CUSTOMER') {
+      const isOwner = customer.userId === req.user.id || (req.user.phone && customer.phone === req.user.phone);
+      if (!isOwner) {
+        return res.status(403).json({ success: false, message: 'Access denied. You can only view your own customer details.' });
+      }
+    }
 
     const credLog = await prisma.auditLog.findFirst({
       where: {

@@ -85,6 +85,14 @@ router.get('/customer/:id', authenticate, async (req, res) => {
     });
 
     if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+
+    if (req.user.role === 'CUSTOMER') {
+      const isOwner = customer.userId === req.user.id || (req.user.phone && customer.phone === req.user.phone);
+      if (!isOwner) {
+        return res.status(403).json({ success: false, message: 'Access denied. You can only view your own report.' });
+      }
+    }
+
     res.json({ success: true, data: customer });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

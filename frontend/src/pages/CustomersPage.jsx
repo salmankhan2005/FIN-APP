@@ -11,7 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AgentCustomerCredentialSection from '../components/AgentCustomerCredentialSection';
 
 export default function CustomersPage() {
-  const { isAdmin, isSuperAdmin } = useAuth();
+  const { isAdmin, isSuperAdmin, isCustomer } = useAuth();
   const canResetCredentials = isAdmin || isSuperAdmin;
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -156,13 +156,13 @@ export default function CustomersPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>Customers</span>
+            <span>{isCustomer ? 'My Customer Profile' : 'Customers'}</span>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary-600)', background: 'rgba(99, 102, 241, 0.1)', padding: '2px 8px', borderRadius: 12 }}>
               {customers.length} total
             </span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-            Manage borrower profiles, guarantor records, and customer accounts
+            {isCustomer ? 'View your registered borrower details and guarantor information' : 'Manage borrower profiles, guarantor records, and customer accounts'}
           </div>
         </div>
 
@@ -213,9 +213,11 @@ export default function CustomersPage() {
             </button>
           </div>
 
-          <button className="btn btn-primary" onClick={openAdd} style={{ gap: 6, padding: '8px 16px', fontWeight: 700 }}>
-            <Plus size={16} /> Add Customer
-          </button>
+          {!isCustomer && (
+            <button className="btn btn-primary" onClick={openAdd} style={{ gap: 6, padding: '8px 16px', fontWeight: 700 }}>
+              <Plus size={16} /> Add Customer
+            </button>
+          )}
         </div>
       </div>
 

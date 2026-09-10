@@ -101,6 +101,22 @@ router.get('/', authenticate, async (req, res) => {
       if (to) where.dueDate.lte = new Date(to);
     }
 
+    if (req.user.role === 'CUSTOMER') {
+      const customer = await prisma.customer.findFirst({
+        where: {
+          OR: [
+            { userId: req.user.id },
+            ...(req.user.phone ? [{ phone: req.user.phone }] : [])
+          ]
+        }
+      });
+      if (customer) {
+        where.loan = { customerId: customer.id };
+      } else {
+        where.id = 'non-existent-id';
+      }
+    }
+
     // Background maintenance tasks — do NOT block HTTP response
     syncOverdueStatus(prisma).catch(err => console.error('syncOverdueStatus error:', err));
     autoExtendActiveLoans().catch(err => console.error('autoExtend error:', err));
@@ -137,14 +153,32 @@ router.get('/today', authenticate, async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    const where = {
+      OR: [
+        { dueDate: { gte: today, lt: tomorrow } },
+        { payments: { some: { collectedAt: { gte: today, lt: tomorrow } } } },
+        { paidAt: { gte: today, lt: tomorrow } },
+      ]
+    };
+
+    if (req.user.role === 'CUSTOMER') {
+      const customer = await prisma.customer.findFirst({
+        where: {
+          OR: [
+            { userId: req.user.id },
+            ...(req.user.phone ? [{ phone: req.user.phone }] : [])
+          ]
+        }
+      });
+      if (customer) {
+        where.loan = { customerId: customer.id };
+      } else {
+        where.id = 'non-existent-id';
+      }
+    }
+
     const repayments = await prisma.repayment.findMany({
-      where: {
-        OR: [
-          { dueDate: { gte: today, lt: tomorrow } },
-          { payments: { some: { collectedAt: { gte: today, lt: tomorrow } } } },
-          { paidAt: { gte: today, lt: tomorrow } },
-        ]
-      },
+      where,
       include: {
         loan: {
           select: {

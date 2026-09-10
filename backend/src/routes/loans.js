@@ -149,8 +149,19 @@ router.get('/', authenticate, async (req, res) => {
     
     // if (req.user.role === 'AGENT') where.agentId = req.user.id; // Removed so all agents see all loans
     if (req.user.role === 'CUSTOMER') {
-      const customer = await prisma.customer.findFirst({ where: { userId: req.user.id } });
-      if (customer) where.customerId = customer.id;
+      const customer = await prisma.customer.findFirst({
+        where: {
+          OR: [
+            { userId: req.user.id },
+            ...(req.user.phone ? [{ phone: req.user.phone }] : [])
+          ]
+        }
+      });
+      if (customer) {
+        where.customerId = customer.id;
+      } else {
+        where.id = 'non-existent-id';
+      }
     }
 
     const [loans, total] = await Promise.all([
@@ -256,6 +267,14 @@ router.get('/:id', authenticate, async (req, res) => {
       },
     });
     if (!loan) return res.status(404).json({ success: false, message: 'Loan not found' });
+
+    if (req.user.role === 'CUSTOMER') {
+      const isOwner = loan.customer && (loan.customer.userId === req.user.id || (req.user.phone && loan.customer.phone === req.user.phone));
+      if (!isOwner) {
+        return res.status(403).json({ success: false, message: 'Access denied. You can only view your own loan details.' });
+      }
+    }
+
     res.json({ success: true, data: loan });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

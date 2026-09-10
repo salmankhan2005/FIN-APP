@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
+const { authenticate } = require('../middleware/auth');
 const prisma = new PrismaClient();
 const { processReminders } = require('../jobs/cron');
 const { dispatchNotification } = require('../services/notification');
@@ -90,8 +91,28 @@ router.post('/trigger', async (req, res) => {
 });
 
 // Get In-App Notifications for current user (Admin/Agent/Customer)
-router.get('/in-app', async (req, res) => {
+router.get('/in-app', authenticate, async (req, res) => {
   try {
+    if (req.user.role === 'CUSTOMER') {
+      const myCustomer = await prisma.customer.findFirst({
+        where: {
+          OR: [
+            { userId: req.user.id },
+            ...(req.user.phone ? [{ phone: req.user.phone }] : [])
+          ]
+        }
+      });
+      if (!myCustomer) return res.json({ success: true, data: [] });
+
+      const appLogs = await prisma.notificationLog.findMany({
+        where: { customerId: myCustomer.id, type: 'APP', readAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 15,
+        include: { customer: { select: { name: true, phone: true } } }
+      });
+      return res.json({ success: true, data: appLogs });
+    }
+
     const [appLogs, agentCredentialLogs] = await Promise.all([
       prisma.notificationLog.findMany({
         where: { type: 'APP', readAt: null },

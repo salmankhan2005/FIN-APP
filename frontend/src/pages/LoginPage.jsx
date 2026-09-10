@@ -109,25 +109,32 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
         boxShadow: '0 8px 40px rgba(0,0,0,0.10)',
       }}>
         {/* Logo + Title */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{
-            width: 60, height: 60, borderRadius: 18,
+            width: 64, height: 64, borderRadius: '50%',
             background: 'linear-gradient(135deg, #1d4ed8 0%, #06b6d4 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 14px auto',
+            margin: '0 auto 12px auto',
             boxShadow: '0 6px 20px rgba(29,78,216,0.3)',
+            overflow: 'hidden',
+            border: '2px solid rgba(255,255,255,0.3)',
           }}>
             <img
               src="/logo-icon.png"
               alt="Finova"
-              style={{ width: 36, height: 36, objectFit: 'contain' }}
-              onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML += '<span style="color:white;font-size:22px;font-weight:900">F</span>'; }}
+              style={{
+                width: '100%', height: '100%',
+                objectFit: 'cover',
+                transform: 'scale(1.18)',
+                borderRadius: '50%',
+              }}
+              onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML += '<span style="color:white;font-size:24px;font-weight:900">F</span>'; }}
             />
           </div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0', letterSpacing: '-0.3px' }}>
             FINOVA
           </h2>
-          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 4px 0' }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', margin: '0 0 4px 0' }}>
             Welcome Back
           </h3>
           <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>

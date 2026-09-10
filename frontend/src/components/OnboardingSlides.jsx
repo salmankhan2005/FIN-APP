@@ -1,64 +1,55 @@
 import React, { useState, useRef } from 'react';
-import { ArrowRight } from 'lucide-react';
 
 const slides = [
   {
-    title: 'Manage Finance',
-    highlight: 'Made Simple',
-    desc: 'A complete platform for agents and customers to manage finances, collections and repayments.',
+    title: 'Connect your\nbank accounts',
+    desc: 'Linking your bank accounts is quick and easy. This will allow you to track your spending and keep an eye on your finances in one place.',
     color: '#2563eb',
-    bg: 'linear-gradient(160deg, #eff6ff 0%, #dbeafe 100%)',
     image: '/onboard1.jpg',
   },
   {
-    title: 'Track Every',
-    highlight: 'Collection',
-    desc: 'Field agents get GPS-mapped daily routes and can record payments on the spot, in real time.',
-    color: '#059669',
-    bg: 'linear-gradient(160deg, #f0fdf4 0%, #d1fae5 100%)',
+    title: 'Set your\nfinancial goals',
+    desc: "Whether you're saving for a rainy day, a new car, or a dream vacation, we're here to help you reach your financial goals.",
+    color: '#2563eb',
     image: '/onboard2.jpg',
   },
   {
-    title: 'Your Loans',
-    highlight: 'At a Glance',
-    desc: 'Customers can view loan balances, upcoming installments, payment history, and receipts anytime.',
-    color: '#7c3aed',
-    bg: 'linear-gradient(160deg, #f5f3ff 0%, #ede9fe 100%)',
+    title: 'Explore our\nfeatures',
+    desc: 'Our app offers a variety of features, including budgeting tools, investment tracking, and financial insights.',
+    color: '#2563eb',
     image: '/onboard3.jpg',
   },
 ];
 
 export default function OnboardingSlides({ onFinish }) {
   const [current, setCurrent] = useState(0);
-  const [sliding, setSliding] = useState(false);
-  const [slideDir, setSlideDir] = useState('none'); // 'left' | 'right' | 'none'
+  const [animating, setAnimating] = useState(false);
+  const [fadeIn, setFadeIn] = useState(true);
   const touchStartX = useRef(null);
 
-  const goTo = (idx, dir = 'left') => {
-    if (sliding) return;
-    setSliding(true);
-    setSlideDir(dir);
+  const goTo = (idx) => {
+    if (animating || idx === current) return;
+    setAnimating(true);
+    setFadeIn(false);
     setTimeout(() => {
       setCurrent(idx);
-      setSlideDir('none');
-      setSliding(false);
-    }, 320);
+      setFadeIn(true);
+      setAnimating(false);
+    }, 200);
   };
 
   const handleNext = () => {
-    if (current < slides.length - 1) goTo(current + 1, 'left');
+    if (current < slides.length - 1) goTo(current + 1);
     else onFinish();
   };
-
-  const handleSkip = () => onFinish();
 
   const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
   const handleTouchEnd = (e) => {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 50) {
-      if (diff > 0 && current < slides.length - 1) goTo(current + 1, 'left');
-      else if (diff < 0 && current > 0) goTo(current - 1, 'right');
+    if (Math.abs(diff) > 40) {
+      if (diff > 0 && current < slides.length - 1) goTo(current + 1);
+      else if (diff < 0 && current > 0) goTo(current - 1);
     }
     touchStartX.current = null;
   };
@@ -66,128 +57,159 @@ export default function OnboardingSlides({ onFinish }) {
   const slide = slides[current];
   const isLast = current === slides.length - 1;
 
-  const imgTransform =
-    slideDir === 'left'  ? 'translateX(-60px)' :
-    slideDir === 'right' ? 'translateX(60px)'  : 'translateX(0)';
-
   return (
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 9998,
-        background: slide.bg,
-        transition: 'background 0.5s ease',
-        display: 'flex', flexDirection: 'column',
+        background: '#f8fafc',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif",
-        overflow: 'hidden',
+        overflow: 'hidden', height: '100dvh', width: '100vw',
       }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Skip button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '52px 28px 0', zIndex: 2 }}>
-        {!isLast && (
-          <button
-            onClick={handleSkip}
+      {/* Mobile-constrained container */}
+      <div
+        style={{
+          width: '100%', maxWidth: 430, height: '100%',
+          background: '#ffffff',
+          display: 'flex', flexDirection: 'column',
+          justifyContent: 'space-between',
+          padding: '16px 24px 20px',
+          boxSizing: 'border-box',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 0 50px rgba(0,0,0,0.06)',
+        }}
+      >
+        {/* Top Header / Skip */}
+        <div style={{
+          display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+          height: 40, flexShrink: 0,
+        }}>
+          {!isLast ? (
+            <button
+              onClick={onFinish}
+              style={{
+                background: '#f1f5f9', border: 'none',
+                borderRadius: 20, padding: '7px 18px',
+                fontSize: 13, fontWeight: 600, color: '#64748b',
+                cursor: 'pointer', transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; }}
+            >
+              Skip
+            </button>
+          ) : <div style={{ height: 32 }} />}
+        </div>
+
+        {/* Illustration Area — Scaled up for prominent 2D artwork */}
+        <div style={{
+          flex: '1 1 auto',
+          minHeight: 0,
+          maxHeight: '52vh',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+          opacity: fadeIn ? 1 : 0,
+          transform: fadeIn ? 'scale(1)' : 'scale(0.96)',
+          transition: 'all 0.2s ease',
+          padding: 0,
+        }}>
+          <img
+            key={current}
+            src={slide.image}
+            alt={`Slide ${current + 1}`}
             style={{
-              background: 'rgba(0,0,0,0.07)', border: 'none',
-              borderRadius: 20, padding: '6px 18px',
-              fontSize: 13, fontWeight: 600, color: '#475569',
-              cursor: 'pointer', letterSpacing: '0.2px',
+              maxHeight: '100%',
+              maxWidth: '100%',
+              width: 'auto',
+              height: 'auto',
+              objectFit: 'contain',
+              transform: 'scale(1.26)',
+              transformOrigin: 'center center',
+              userSelect: 'none',
+              pointerEvents: 'none',
             }}
-          >
-            Skip
-          </button>
-        )}
-      </div>
+          />
+        </div>
 
-      {/* Illustration image */}
-      <div style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '16px 24px 0', overflow: 'hidden',
-      }}>
-        <img
-          key={current}
-          src={slide.image}
-          alt={`Slide ${current + 1}`}
-          style={{
-            width: '100%',
-            maxWidth: 340,
-            height: 'auto',
-            maxHeight: '55vh',
-            objectFit: 'contain',
-            borderRadius: 20,
-            opacity: slideDir === 'none' ? 1 : 0,
-            transform: imgTransform,
-            transition: 'opacity 0.32s ease, transform 0.32s ease',
-            filter: 'drop-shadow(0 16px 40px rgba(0,0,0,0.12))',
-          }}
-        />
-      </div>
-
-      {/* Bottom sheet */}
-      <div style={{
-        background: 'white',
-        borderRadius: '32px 32px 0 0',
-        padding: '32px 28px 44px',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.08)',
-        opacity: slideDir === 'none' ? 1 : 0,
-        transform: slideDir === 'none' ? 'translateY(0)' : 'translateY(16px)',
-        transition: 'opacity 0.32s ease, transform 0.32s ease',
-      }}>
-        {/* Heading */}
-        <h2 style={{
-          fontSize: 26, fontWeight: 800, color: '#0f172a',
-          margin: '0 0 8px 0', lineHeight: 1.25,
+        {/* Bottom Card Area */}
+        <div style={{
+          flexShrink: 0,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center',
+          opacity: fadeIn ? 1 : 0,
+          transform: fadeIn ? 'translateY(0)' : 'translateY(6px)',
+          transition: 'all 0.2s ease',
         }}>
-          {slide.title}{' '}
-          <span style={{ color: slide.color }}>{slide.highlight}</span>
-        </h2>
-        <p style={{
-          fontSize: 14, color: '#64748b', lineHeight: 1.7,
-          margin: '0 0 28px 0', fontWeight: 400, maxWidth: 320,
-        }}>
-          {slide.desc}
-        </p>
-
-        {/* Dots + Button */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Pagination dots */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* Pagination Pill Indicators */}
+          <div style={{
+            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6,
+            marginBottom: 12,
+          }}>
             {slides.map((_, i) => (
               <button
                 key={i}
-                onClick={() => !sliding && goTo(i, i > current ? 'left' : 'right')}
+                onClick={() => goTo(i)}
+                aria-label={`Go to slide ${i + 1}`}
                 style={{
-                  width: i === current ? 28 : 8,
-                  height: 8, borderRadius: 4, border: 'none', padding: 0,
-                  background: i === current ? slide.color : '#cbd5e1',
+                  width: i === current ? 24 : 12,
+                  height: 5, borderRadius: 3, border: 'none', padding: 0,
+                  background: i === current ? '#2563eb' : '#e2e8f0',
                   cursor: 'pointer',
-                  transition: 'all 0.35s cubic-bezier(0.4,0,0.2,1)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               />
             ))}
           </div>
 
-          {/* CTA */}
+          {/* Text Content — reduced font size */}
+          <div style={{ textAlign: 'center', marginBottom: 18 }}>
+            <h2 style={{
+              fontSize: 'clamp(18px, 4.8vw, 21px)', fontWeight: 800, color: '#0f172a',
+              margin: '0 0 6px 0', lineHeight: 1.25,
+              whiteSpace: 'pre-line',
+              letterSpacing: '-0.3px',
+            }}>
+              {slide.title}
+            </h2>
+            <p style={{
+              fontSize: 'clamp(11.5px, 3.1vw, 13px)', color: '#64748b', lineHeight: 1.5,
+              margin: '0 auto', fontWeight: 400,
+              maxWidth: 290,
+            }}>
+              {slide.desc}
+            </p>
+          </div>
+
+          {/* Next Button */}
           <button
             onClick={handleNext}
             style={{
-              background: slide.color,
-              color: 'white', border: 'none',
-              borderRadius: 50, padding: '14px 26px',
+              width: '100%', height: 48,
+              background: '#2563eb',
+              color: '#ffffff', border: 'none',
+              borderRadius: 24,
               fontSize: 15, fontWeight: 700,
-              display: 'flex', alignItems: 'center', gap: 8,
               cursor: 'pointer',
-              boxShadow: `0 8px 24px ${slide.color}55`,
+              boxShadow: '0 6px 20px rgba(37,99,235,0.3)',
               transition: 'all 0.2s ease',
-              letterSpacing: '-0.2px',
+              letterSpacing: '0.2px',
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.92'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            <span>{isLast ? 'Get Started' : 'Next'}</span>
-            <ArrowRight size={16} />
+            {isLast ? 'Get Started' : 'Next'}
           </button>
+
+          {/* Home indicator bar for native mobile feel */}
+          <div style={{
+            width: 120, height: 4, background: '#0f172a',
+            borderRadius: 2, opacity: 0.18,
+            marginTop: 12,
+          }} />
         </div>
       </div>
     </div>

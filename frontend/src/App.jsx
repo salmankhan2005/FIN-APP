@@ -1,10 +1,12 @@
-import { BrowserRouter, Routes, Route, Navigate, Suspense, lazy } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Suspense } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { useEffect, useState } from 'react';
+import ScrollToTop from './components/ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 import './index.css';
 
 // ── Eagerly loaded (always needed immediately) ──────────────────────────────
@@ -12,23 +14,23 @@ import AppLayout from './components/AppLayout';
 import SplashScreen from './components/SplashScreen';
 import LoginPage from './pages/LoginPage';
 import RoleSelectionPage from './pages/RoleSelectionPage';
-import ScrollToTop from './components/ScrollToTop';
+
 
 // ── Lazy loaded (only loaded when navigated to) ─────────────────────────────
-const Dashboard          = lazy(() => import('./pages/Dashboard'));
-const CustomersPage      = lazy(() => import('./pages/CustomersPage'));
-const CustomerDetail     = lazy(() => import('./pages/CustomerDetail'));
-const LoansPage          = lazy(() => import('./pages/LoansPage'));
-const LoanDetail         = lazy(() => import('./pages/LoanDetail'));
-const CreateLoan         = lazy(() => import('./pages/CreateLoan'));
-const CollectionPage     = lazy(() => import('./pages/CollectionPage'));
-const UsersPage          = lazy(() => import('./pages/UsersPage'));
-const SettingsPage       = lazy(() => import('./pages/SettingsPage'));
-const NotificationsDashboard = lazy(() => import('./pages/NotificationsDashboard'));
-const ProfitPage         = lazy(() => import('./pages/ProfitPage'));
-const CollectionRoutePage = lazy(() => import('./pages/CollectionRoutePage'));
-const PaymentsHistoryPage = lazy(() => import('./pages/PaymentsHistoryPage'));
-const OnboardingSlides   = lazy(() => import('./components/OnboardingSlides'));
+const Dashboard          = lazyWithRetry(() => import('./pages/Dashboard'));
+const CustomersPage      = lazyWithRetry(() => import('./pages/CustomersPage'));
+const CustomerDetail     = lazyWithRetry(() => import('./pages/CustomerDetail'));
+const LoansPage          = lazyWithRetry(() => import('./pages/LoansPage'));
+const LoanDetail         = lazyWithRetry(() => import('./pages/LoanDetail'));
+const CreateLoan         = lazyWithRetry(() => import('./pages/CreateLoan'));
+const CollectionPage     = lazyWithRetry(() => import('./pages/CollectionPage'));
+const UsersPage          = lazyWithRetry(() => import('./pages/UsersPage'));
+const SettingsPage       = lazyWithRetry(() => import('./pages/SettingsPage'));
+const NotificationsDashboard = lazyWithRetry(() => import('./pages/NotificationsDashboard'));
+const ProfitPage         = lazyWithRetry(() => import('./pages/ProfitPage'));
+const CollectionRoutePage = lazyWithRetry(() => import('./pages/CollectionRoutePage'));
+const PaymentsHistoryPage = lazyWithRetry(() => import('./pages/PaymentsHistoryPage'));
+const OnboardingSlides   = lazyWithRetry(() => import('./components/OnboardingSlides'));
 
 const STEP_SPLASH = 'splash';
 const STEP_ONBOARDING = 'onboarding';

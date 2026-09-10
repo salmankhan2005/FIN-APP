@@ -2,6 +2,27 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
+// ── Auto-reload on stale chunk error ──────────────────────────────────────────
+// When Vite deploys new bundles, old cached JS can't find the new chunk hashes.
+// Instead of showing a blank page, detect this and reload once automatically.
+window.addEventListener('unhandledrejection', (event) => {
+  const msg = event.reason?.message || '';
+  const isChunkError =
+    event.reason?.name === 'ChunkLoadError' ||
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('error loading dynamically imported module');
+
+  if (isChunkError) {
+    event.preventDefault();
+    const reloadKey = 'finova_chunk_reloaded';
+    if (!sessionStorage.getItem(reloadKey)) {
+      sessionStorage.setItem(reloadKey, '1');
+      window.location.reload();
+    }
+  }
+});
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />

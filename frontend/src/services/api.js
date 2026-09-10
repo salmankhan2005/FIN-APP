@@ -27,13 +27,15 @@ const getCleanApiUrl = () => {
     }
   }
 
-  if (stored) return stored;
+  let finalUrl = stored || (validEnvUrl && (validEnvUrl.startsWith('http://') || validEnvUrl.startsWith('https://')) ? validEnvUrl : (isProduction ? PROD_API_URL : DEV_API_URL));
 
-  if (validEnvUrl && (validEnvUrl.startsWith('http://') || validEnvUrl.startsWith('https://'))) {
-    return validEnvUrl;
+  // Ensure finalUrl always ends with /api (without trailing slashes before it)
+  finalUrl = finalUrl.replace(/\/+$/, '');
+  if (!finalUrl.endsWith('/api')) {
+    finalUrl = `${finalUrl}/api`;
   }
 
-  return isProduction ? PROD_API_URL : DEV_API_URL;
+  return finalUrl;
 };
 
 const API_URL = getCleanApiUrl();
@@ -222,9 +224,12 @@ export const notificationsAPI = {
 export default api;
 export const updateApiBaseUrl = (url) => {
   if (!url) return;
-  let clean = url.trim().replace(/^[/=\s]+/, '');
+  let clean = url.trim().replace(/^[/=\s]+/, '').replace(/\/+$/, '');
   if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
     clean = 'https://' + clean;
+  }
+  if (!clean.endsWith('/api')) {
+    clean = `${clean}/api`;
   }
   api.defaults.baseURL = clean;
   localStorage.setItem('finova_api_url', clean);

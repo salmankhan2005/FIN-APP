@@ -29,7 +29,9 @@ const localIp = getLocalIpAddress();
 // Trust reverse proxy (Render, Vercel, Railway, Nginx) for accurate client IP rate limiting
 app.set('trust proxy', 1);
 
-app.use(helmet());
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+}));
 
 // Allow specific origins for production security
 app.use(cors({
@@ -176,9 +178,10 @@ async function start() {
     await syncDatabaseSchema();
     await seedAdmin();
     startCronJobs();
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Finova API running on http://0.0.0.0:${PORT}`);
-      console.log(`📡 Accessible on your network at http://${localIp}:${PORT}`);
+    app.listen(PORT, () => {
+      console.log(`🚀 Finova API running on port ${PORT}`);
+      console.log(`📡 Localhost: http://localhost:${PORT}`);
+      console.log(`📡 Network: http://${localIp}:${PORT}`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

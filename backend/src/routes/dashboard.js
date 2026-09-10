@@ -6,9 +6,21 @@ const prisma = new PrismaClient();
 
 const { syncOverdueStatus } = require('../utils/loanCalc');
 
+let summaryCacheData = null;
+let summaryCacheTime = 0;
+
+function clearSummaryCache() {
+  summaryCacheTime = 0;
+}
+
 // GET /api/dashboard/summary
 router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
+    const nowTs = Date.now();
+    if (summaryCacheData && (nowTs - summaryCacheTime < 15000)) {
+      return res.json(summaryCacheData);
+    }
+
     const now = new Date();
     
     // Start of current day
@@ -318,7 +330,7 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
     const todayDueAmt = todaysDues._sum.dueAmount || 0;
     const todayPaidAmt = todaysDues._sum.paidAmount || 0;
 
-    res.json({
+    const responsePayload = {
       success: true,
       data: {
         outstandingAmount: totalOutstandingPrincipal + totalOutstandingInterest,
@@ -348,7 +360,11 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
         },
         monthlyTrend: months,
       },
-    });
+    };
+
+    summaryCacheData = responsePayload;
+    summaryCacheTime = Date.now();
+    res.json(responsePayload);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -592,4 +608,5 @@ router.get('/profit', authenticate, authorize('ADMIN'), async (req, res) => {
   }
 });
 
+router.clearSummaryCache = clearSummaryCache;
 module.exports = router;

@@ -7,12 +7,15 @@ const { sendSMS } = require('../utils/sms');
 const { sendWhatsAppMessage } = require('../services/whatsappClient');
 const prisma = new PrismaClient();
 
+const dashboardRouter = require('./dashboard');
+
 // round2 MUST be defined before any route that uses it
 const round2 = (num) => Math.round(num * 100) / 100;
 
 // POST /api/payments — Collect INTEREST payment
 router.post('/', authenticate, async (req, res) => {
   try {
+    if (dashboardRouter.clearSummaryCache) dashboardRouter.clearSummaryCache();
     const { repaymentId, amount, paymentMode = 'CASH', reference, notes, penaltyAmount = 0 } = req.body;
 
     if (!repaymentId || !amount) {

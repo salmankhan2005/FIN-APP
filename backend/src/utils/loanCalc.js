@@ -90,8 +90,16 @@ function generateLoanNumber() {
  * On the due date itself, if not paid, status remains PENDING/PARTIAL (Due Today).
  * Also fixes any records prematurely marked OVERDUE for today or future dates.
  */
-async function syncOverdueStatus(prisma) {
+let lastSyncTimestamp = 0;
+
+async function syncOverdueStatus(prisma, force = false) {
   try {
+    const now = Date.now();
+    if (!force && now - lastSyncTimestamp < 5 * 60 * 1000) {
+      return; // Already synced in the last 5 minutes
+    }
+    lastSyncTimestamp = now;
+
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 

@@ -54,7 +54,8 @@ export default function Dashboard() {
   const [loadingLoans, setLoadingLoans] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const loadData = () => {
+  const loadData = (isInitial = false) => {
+    if (isInitial) setLoading(true);
     if (isCustomer) {
       loansAPI.list({ limit: 50 })
         .then(res => {
@@ -74,8 +75,8 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 30000); // 30s auto-refresh
+    loadData(true);
+    const interval = setInterval(() => loadData(false), 30000); // 30s auto-refresh
     return () => clearInterval(interval);
   }, [isCustomer]);
 

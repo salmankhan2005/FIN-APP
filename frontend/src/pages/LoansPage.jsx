@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { loansAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import { Plus, Eye, Landmark, Search, ChevronDown } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const fmtAmt = (v) => (!v && v !== 0) ? '₹0' : `₹${(typeof v === 'number' ? v : parseFloat(v) || 0).toLocaleString('en-IN')}`;
 
 export default function LoansPage() {
+  const { isCustomer } = useAuth();
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ACTIVE');
@@ -36,12 +38,14 @@ export default function LoansPage() {
   return (
     <div className="animate-in">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>Loans <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>({filteredLoans.length})</span></div>
-        <Link to="/loans/create" className="btn btn-primary btn-sm"><Plus size={15} /> New</Link>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>{isCustomer ? 'My Loans' : 'Loans'} <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>({filteredLoans.length})</span></div>
+        {!isCustomer && (
+          <Link to="/loans/create" className="btn btn-primary btn-sm"><Plus size={15} /> New</Link>
+        )}
       </div>
 
-      {/* Outstanding Summary Pills */}
-      {filter === 'ACTIVE' && loans.length > 0 && (
+      {/* Outstanding Summary Pills — Admin/Agent only */}
+      {!isCustomer && filter === 'ACTIVE' && loans.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, marginBottom: 14 }}>
           <div style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(59, 130, 246, 0.15)' }}>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>Regular Flat Interest (வட்டி கடன்)</div>
@@ -67,7 +71,7 @@ export default function LoansPage() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <div className="search-bar" style={{ flex: 1, minWidth: 180, margin: 0 }}>
           <Search size={16} color="var(--text-muted)" />
-          <input placeholder="Search name, phone, loan ID..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input placeholder={isCustomer ? 'Search your loans...' : 'Search name, phone, loan ID...'} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         
         {/* Loan Type Filter */}
@@ -137,12 +141,14 @@ export default function LoansPage() {
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="tabs">
-        {[['ACTIVE', 'Active'], ['', 'All'], ['CLOSED', 'Closed'], ['DEFAULTED', 'Defaulted']].map(([val, label]) => (
-          <button key={val} className={`tab ${filter === val ? 'active' : ''}`} onClick={() => setFilter(val)}>{label}</button>
-        ))}
-      </div>
+      {/* Filter tabs — Admin/Agent only */}
+      {!isCustomer && (
+        <div className="tabs">
+          {[['ACTIVE', 'Active'], ['', 'All'], ['CLOSED', 'Closed'], ['DEFAULTED', 'Defaulted']].map(([val, label]) => (
+            <button key={val} className={`tab ${filter === val ? 'active' : ''}`} onClick={() => setFilter(val)}>{label}</button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ padding: '40px 0', display: 'flex', justifyContent: 'center' }}>

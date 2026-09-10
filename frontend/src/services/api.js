@@ -1,14 +1,26 @@
 import axios from 'axios';
 
-// Clear legacy render URL if stored in localStorage
+const PROD_API_URL = 'https://finance-app-awae.onrender.com/api';
+const DEV_API_URL = 'http://localhost:5000/api';
+
+const isProduction = typeof window !== 'undefined' && 
+  window.location.hostname !== 'localhost' && 
+  window.location.hostname !== '127.0.0.1';
+
+// Clear stale localhost URL from localStorage if running on a remote production domain
 if (typeof window !== 'undefined') {
   const storedUrl = localStorage.getItem('finova_api_url');
-  if (storedUrl && storedUrl.includes('onrender.com')) {
+  if (storedUrl && isProduction && (storedUrl.includes('localhost') || storedUrl.includes('127.0.0.1'))) {
     localStorage.removeItem('finova_api_url');
   }
 }
 
-const API_URL = (typeof window !== 'undefined' && localStorage.getItem('finova_api_url')) || (import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:5000/api';
+const envApiUrl = import.meta.env && import.meta.env.VITE_API_URL;
+const validEnvUrl = envApiUrl && (!isProduction || !envApiUrl.includes('localhost')) ? envApiUrl : null;
+
+const API_URL = (typeof window !== 'undefined' && localStorage.getItem('finova_api_url')) ||
+  validEnvUrl ||
+  (isProduction ? PROD_API_URL : DEV_API_URL);
 
 const api = axios.create({
   baseURL: API_URL,
@@ -43,7 +55,7 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     
     // If error is 401 and we haven't retried yet, and it's not the refresh or login endpoint itself
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/refresh') && !originalRequest.url.includes('/auth/login')) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !originalRequest.url?.includes('/auth/refresh') && !originalRequest.url?.includes('/auth/login')) {
       originalRequest._retry = true;
       const refreshToken = getAuthRefreshToken();
       
@@ -53,26 +65,29 @@ api.interceptors.response.use(
           const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
           
           if (res.data?.success && res.data?.data?.accessToken) {
-            sessionStorage.setItem('token', res.data.data.accessToken);
-            localStorage.setItem('token', res.data.data.accessToken);
+            const newAccess = res.data.data.accessToken;
+            sessionStorage.setItem('token', newAccess);
+            localStorage.setItem('token', newAccess);
             if (res.data.data.refreshToken) {
               sessionStorage.setItem('refreshToken', res.data.data.refreshToken);
               localStorage.setItem('refreshToken', res.data.data.refreshToken);
             }
             
             // Retry the original request with new token
-            originalRequest.headers.Authorization = `Bearer ${res.data.data.accessToken}`;
+            originalRequest.headers.Authorization = `Bearer ${newAccess}`;
             return api(originalRequest);
           }
         } catch (refreshError) {
-          // If refresh fails, tokens are dead
-          sessionStorage.removeItem('token');
-          sessionStorage.removeItem('refreshToken');
-          sessionStorage.removeItem('user');
-          localStorage.removeItem('token');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('user');
-          window.location.reload(); 
+          // Only clear session if server explicitly rejects refresh with HTTP 401/403
+          if (refreshError.response && (refreshError.response.status === 401 || refreshError.response.status === 403)) {
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('refreshToken');
+            sessionStorage.removeItem('user');
+            localStorage.removeItem('token');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+          }
+          // Note: DO NOT call window.location.reload()! React state handles session transitions cleanly.
         }
       }
     }

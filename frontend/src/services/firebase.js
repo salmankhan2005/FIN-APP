@@ -6,7 +6,8 @@ import {
   signInWithPopup, 
   signInWithRedirect, 
   getRedirectResult,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signOut
 } from "firebase/auth";
 
 // Your web app's Firebase configuration
@@ -31,6 +32,19 @@ export function getFirebaseAuth() {
     firebaseApp = getApp();
   }
   return getAuth(firebaseApp);
+}
+
+/**
+ * Sign out from Firebase Auth completely
+ */
+export async function signOutFromFirebase() {
+  try {
+    const auth = getFirebaseAuth();
+    await signOut(auth);
+    console.info('[Firebase] Successfully signed out of Firebase Auth');
+  } catch (err) {
+    console.warn('[Firebase] Sign out error:', err);
+  }
 }
 
 /**
@@ -62,24 +76,26 @@ export async function checkGoogleRedirectResult() {
  * Bypasses all Cross-Origin-Opener-Policy (COOP) and window.closed popup restrictions
  */
 export async function signInWithGoogleRedirectForAdmin() {
-  const auth = getFirebaseAuth();
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-  await signInWithRedirect(auth, provider);
-  return null;
+  return signInWithGoogleForAdmin();
 }
 
 /**
  * Sign In with Google via Firebase Auth.
- * Uses redirect directly to ensure 100% reliability across all browsers,
- * preventing Cross-Origin-Opener-Policy (COOP) window.closed blocks.
+ * Always prompts the user to select an account and clears any stale Firebase session.
  */
 export async function signInWithGoogleForAdmin() {
   const auth = getFirebaseAuth();
+  
+  // Clear any existing Firebase session first so account chooser always opens
+  try {
+    await signOut(auth);
+  } catch (_) {}
+
   const provider = new GoogleAuthProvider();
+  // 'select_account' forces Google to show the account picker dialog every single time!
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  console.info('[Firebase] Executing Google Sign-In redirect...');
+  console.info('[Firebase] Executing Google Sign-In redirect with prompt=select_account...');
   await signInWithRedirect(auth, provider);
   return null;
 }

@@ -1,14 +1,12 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { authAPI } from '../services/api';
-import { initFirebaseForSuperAdmin, checkGoogleRedirectResult, listenToFirebaseAuth } from '../services/firebase';
+import { initFirebaseForSuperAdmin, checkGoogleRedirectResult, listenToFirebaseAuth, signOutFromFirebase } from '../services/firebase';
 
 const AuthContext = createContext(null);
 
 // Detect if we are returning from a Google redirect
-// Firebase sets a key in sessionStorage before redirect
 function isReturningFromGoogleRedirect() {
   try {
-    // Firebase Auth stores pending redirect info in localStorage under this key
     const keys = Object.keys(localStorage);
     return keys.some(k => k.includes('pendingRedirect') || k.includes('firebase:pendingRedirect'));
   } catch (_) {
@@ -36,10 +34,10 @@ export function AuthProvider({ children }) {
   });
   
   const [loading, setLoading] = useState(false);
-  // Start as true if no stored user AND we might be returning from Google redirect
   const [isAuthenticating, setIsAuthenticating] = useState(() => {
     const hasStoredUser = !!(sessionStorage.getItem('user') || localStorage.getItem('user'));
     if (hasStoredUser) return false;
+    if (localStorage.getItem('finova_logged_out') === 'true') return false;
     return isReturningFromGoogleRedirect();
   });
   const authSyncInProgress = useRef(false);
@@ -59,13 +57,11 @@ export function AuthProvider({ children }) {
             await loginWithGoogle(googleUser);
           } catch (err) {
             console.warn('[Auth] Google redirect login error:', err);
-            // Clear authenticating even on error so user is not stuck
             setIsAuthenticating(false);
           } finally {
             authSyncInProgress.current = false;
           }
         } else {
-          // No redirect result — stop showing connecting screen if we have no user
           setIsAuthenticating(false);
         }
       })
@@ -75,14 +71,21 @@ export function AuthProvider({ children }) {
         setIsAuthenticating(false);
       });
 
-    // 2. Listen for Firebase Auth state changes as a fallback
+    // 2. Listen for Firebase Auth state changes
     const unsubscribe = listenToFirebaseAuth(async (firebaseUser) => {
+      // Do not auto-relogin if user explicitly logged out
+      if (localStorage.getItem('finova_logged_out') === 'true' || sessionStorage.getItem('finova_logged_out') === 'true') {
+        setIsAuthenticating(false);
+        return;
+      }
+
       if (firebaseUser && firebaseUser.email && !authSyncInProgress.current) {
         const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
         let currentEmail = null;
         try { currentEmail = stored ? JSON.parse(stored)?.email : null; } catch (_) {}
 
-        if (currentEmail !== firebaseUser.email) {
+        // Only sync if user was already logged in or returning from Google redirect
+        if (currentEmail !== firebaseUser.email && (stored || isReturningFromGoogleRedirect())) {
           console.info('[Auth] Firebase state: Google user detected, syncing with backend:', firebaseUser.email);
           authSyncInProgress.current = true;
           setIsAuthenticating(true);
@@ -95,11 +98,9 @@ export function AuthProvider({ children }) {
             authSyncInProgress.current = false;
           }
         } else {
-          // User already synced, stop authenticating screen
           setIsAuthenticating(false);
         }
       } else if (!firebaseUser) {
-        // No firebase user — if redirect check is done and no user, stop spinner
         if (redirectCheckDone) setIsAuthenticating(false);
       }
     });
@@ -177,6 +178,8 @@ export function AuthProvider({ children }) {
 
   const loginWithGoogle = async (googleUser) => {
     try {
+      localStorage.removeItem('finova_logged_out');
+      sessionStorage.removeItem('finova_logged_out');
       setIsAuthenticating(true);
       const response = await authAPI.googleLogin({
         email: googleUser.email,
@@ -220,15 +223,25 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    // Clear local state immediately so UI responds instantly
+    // 1. Explicitly flag that user logged out so onAuthStateChanged doesn't auto-relogin
+    localStorage.setItem('finova_logged_out', 'true');
+    sessionStorage.setItem('finova_logged_out', 'true');
+
+    // 2. Clear Firebase Auth session completely so next Google sign-in prompts account chooser
+    try {
+      await signOutFromFirebase();
+    } catch (_) {}
+
+    // 3. Clear local state immediately so UI responds instantly
+    const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
     sessionStorage.clear();
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    localStorage.setItem('finova_logged_out', 'true');
     setUser(null);
 
-    // Fire backend logout in background (don't await — no need to block UI)
-    const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
+    // 4. Fire backend logout in background
     if (refreshToken) {
       authAPI.logout().catch(() => {}); // fire-and-forget
     }

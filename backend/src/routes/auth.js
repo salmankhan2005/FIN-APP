@@ -57,7 +57,7 @@ router.get('/emergency-reset', async (req, res) => {
   }
 });
 
-// GET /api/auth/sync-db - Sync customer & jamin schema columns
+// GET /api/auth/sync-db - Sync customer & jamin schema columns and consolidate duplicate accounts
 router.get('/sync-db', async (req, res) => {
   try {
     const columns = [
@@ -90,7 +90,60 @@ router.get('/sync-db', async (req, res) => {
       }
       results.push({ column: col, success: colSuccess });
     }
-    res.json({ success: true, message: 'DB columns checked and synced', results });
+
+    // Consolidate duplicate admin users
+    const allUsers = await prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    const byEmail = {};
+    for (const u of allUsers) {
+      const em = (u.email || '').toLowerCase().trim();
+      if (!em || em === 'admin@loanflow.com') continue;
+      if (!byEmail[em]) byEmail[em] = [];
+      byEmail[em].push(u);
+    }
+
+    const merged = [];
+    for (const [em, accounts] of Object.entries(byEmail)) {
+      if (accounts.length > 1) {
+        const primary = accounts[0];
+        const dups = accounts.slice(1);
+        const dupIds = dups.map(d => d.id);
+
+        await prisma.customer.updateMany({
+          where: { adminId: { in: dupIds } },
+          data: { adminId: primary.id }
+        });
+        await prisma.customer.updateMany({
+          where: { creatorId: { in: dupIds } },
+          data: { creatorId: primary.id }
+        });
+        await prisma.loan.updateMany({
+          where: { adminId: { in: dupIds } },
+          data: { adminId: primary.id }
+        });
+        await prisma.loan.updateMany({
+          where: { creatorId: { in: dupIds } },
+          data: { creatorId: primary.id }
+        });
+        await prisma.auditLog.updateMany({
+          where: { userId: { in: dupIds } },
+          data: { userId: primary.id }
+        });
+        await prisma.refreshToken.updateMany({
+          where: { userId: { in: dupIds } },
+          data: { userId: primary.id }
+        });
+        await prisma.user.deleteMany({
+          where: { id: { in: dupIds } }
+        });
+        merged.push({ email: em, primaryId: primary.id, removedDups: dupIds });
+      }
+    }
+
+    res.json({ success: true, message: 'DB columns checked and synced, duplicates merged', results, merged });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -105,11 +158,57 @@ async function processGoogleAuth(req, res) {
 
   const cleanEmail = email.trim().toLowerCase();
 
-  let adminUser = await prisma.user.findFirst({
-    where: { email: cleanEmail }
+  // Find all admin accounts matching this Google email
+  const existingAdmins = await prisma.user.findMany({
+    where: {
+      OR: [
+        { email: { equals: cleanEmail, mode: 'insensitive' } },
+        { phone: { equals: cleanEmail, mode: 'insensitive' } }
+      ]
+    },
+    orderBy: { createdAt: 'asc' }
   });
 
+  let adminUser = existingAdmins[0] || null;
+
   if (adminUser) {
+    // If duplicates exist (due to parallel requests), consolidate ALL data into the primary adminUser!
+    if (existingAdmins.length > 1) {
+      const duplicateIds = existingAdmins.slice(1).map(u => u.id);
+      try {
+        await prisma.customer.updateMany({
+          where: { adminId: { in: duplicateIds } },
+          data: { adminId: adminUser.id }
+        });
+        await prisma.customer.updateMany({
+          where: { creatorId: { in: duplicateIds } },
+          data: { creatorId: adminUser.id }
+        });
+        await prisma.loan.updateMany({
+          where: { adminId: { in: duplicateIds } },
+          data: { adminId: adminUser.id }
+        });
+        await prisma.loan.updateMany({
+          where: { creatorId: { in: duplicateIds } },
+          data: { creatorId: adminUser.id }
+        });
+        await prisma.auditLog.updateMany({
+          where: { userId: { in: duplicateIds } },
+          data: { userId: adminUser.id }
+        });
+        await prisma.refreshToken.updateMany({
+          where: { userId: { in: duplicateIds } },
+          data: { userId: adminUser.id }
+        });
+        await prisma.user.deleteMany({
+          where: { id: { in: duplicateIds } }
+        });
+        console.log(`[Auth] Consolidated ${duplicateIds.length} duplicate admin accounts into ${adminUser.id} for ${cleanEmail}`);
+      } catch (mergeErr) {
+        console.warn('[Auth] Duplicate admin merge error:', mergeErr.message);
+      }
+    }
+
     if (adminUser.role !== 'ADMIN' || !adminUser.isActive || (name && adminUser.name !== name)) {
       adminUser = await prisma.user.update({
         where: { id: adminUser.id },

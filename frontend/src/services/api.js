@@ -1,44 +1,6 @@
 import axios from 'axios';
 
-const PROD_API_URL = 'https://finance-app-841v.onrender.com/api';
-const DEV_API_URL = 'http://localhost:5000/api';
-
-const isProduction = typeof window !== 'undefined' && 
-  window.location.hostname !== 'localhost' && 
-  window.location.hostname !== '127.0.0.1';
-
-const envApiUrl = import.meta.env && import.meta.env.VITE_API_URL;
-const validEnvUrl = envApiUrl && (!isProduction || !envApiUrl.includes('localhost')) ? envApiUrl : null;
-
-// Clean & sanitize stored API URL
-const getCleanApiUrl = () => {
-  if (typeof window === 'undefined') return isProduction ? PROD_API_URL : DEV_API_URL;
-  
-  let stored = localStorage.getItem('finova_api_url');
-  if (stored) {
-    // Sanitize any malformed prefixes like /= or leading slashes/spaces or legacy URLs
-    stored = stored.trim().replace(/^[/=\s]+/, '');
-    if (!stored.startsWith('http://') && !stored.startsWith('https://')) {
-      stored = 'https://' + stored;
-    }
-    if (stored.includes('awae') || (isProduction && (stored.includes('localhost') || stored.includes('127.0.0.1')))) {
-      localStorage.removeItem('finova_api_url');
-      stored = null;
-    }
-  }
-
-  let finalUrl = stored || (validEnvUrl && (validEnvUrl.startsWith('http://') || validEnvUrl.startsWith('https://')) ? validEnvUrl : (isProduction ? PROD_API_URL : DEV_API_URL));
-
-  // Ensure finalUrl always ends with /api (without trailing slashes before it)
-  finalUrl = finalUrl.replace(/\/+$/, '');
-  if (!finalUrl.endsWith('/api')) {
-    finalUrl = `${finalUrl}/api`;
-  }
-
-  return finalUrl;
-};
-
-const API_URL = getCleanApiUrl();
+const API_URL = 'https://fin-app-vtva.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -237,15 +199,4 @@ export const notificationsAPI = {
 };
 
 export default api;
-export const updateApiBaseUrl = (url) => {
-  if (!url) return;
-  let clean = url.trim().replace(/^[/=\s]+/, '').replace(/\/+$/, '');
-  if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-    clean = 'https://' + clean;
-  }
-  if (!clean.endsWith('/api')) {
-    clean = `${clean}/api`;
-  }
-  api.defaults.baseURL = clean;
-  localStorage.setItem('finova_api_url', clean);
-};
+

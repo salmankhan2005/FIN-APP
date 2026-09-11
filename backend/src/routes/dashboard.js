@@ -446,6 +446,43 @@ router.get('/agent', authenticate, authorize('ADMIN', 'AGENT'), async (req, res)
   }
 });
 
+// GET /api/dashboard/data-summary — Returns counts of all data this admin owns (for delete confirmation UI)
+router.get('/data-summary', authenticate, authorize('ADMIN'), async (req, res) => {
+  try {
+    const customerFilter = getCustomerFilter(req.user);
+    const loanFilter = getLoanFilter(req.user);
+
+    const adminLoans = await prisma.loan.findMany({
+      where: loanFilter,
+      select: { id: true }
+    });
+    const loanIds = adminLoans.map(l => l.id);
+
+    const [customers, loans, repayments, payments, auditLogs] = await Promise.all([
+      prisma.customer.count({ where: customerFilter }),
+      prisma.loan.count({ where: loanFilter }),
+      loanIds.length > 0
+        ? prisma.repayment.count({ where: { loanId: { in: loanIds } } })
+        : Promise.resolve(0),
+      loanIds.length > 0
+        ? prisma.payment.count({
+            where: {
+              repayment: { loanId: { in: loanIds } }
+            }
+          })
+        : Promise.resolve(0),
+      prisma.auditLog.count({ where: { adminId: req.user.adminId || req.user.id } }),
+    ]);
+
+    res.json({
+      success: true,
+      data: { customers, loans, repayments, payments, auditLogs }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // POST /api/dashboard/reset-all-data — Reset production database
 router.post('/reset-all-data', authenticate, authorize('ADMIN'), async (req, res) => {
   try {

@@ -1,6 +1,21 @@
 const isLegacyAdmin = (user) => {
   if (!user) return false;
-  return user.phone === '6380372501' || user.email === 'admin@loanflow.com';
+  if (user.role === 'SUPER_ADMIN') return true;
+  const legacyEmails = [
+    'admin@loanflow.com',
+    'salmankhandwork@gmail.com',
+    'salmankhanwork@gmail.com',
+    'samitha0786@gmail.com',
+    'samitha121986@gmail.com',
+    'v4nexustech@gmail.com',
+    'jeevaamarimuthu8@gmail.com'
+  ];
+  return (
+    user.phone === '6380372501' ||
+    user.phone === '09342298949' ||
+    user.phone === '9342298949' ||
+    legacyEmails.includes(user.email?.toLowerCase?.() || '')
+  );
 };
 
 /**
@@ -52,20 +67,15 @@ const assertOwnership = (resource, user, resourceName = 'Resource') => {
 
 const getCustomerFilter = (user) => {
   if (!user) return { id: '__NONE__' };
-  if (user.role === 'ADMIN') {
+  if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
     if (isLegacyAdmin(user)) {
-      return {
-        OR: [
-          { adminId: user.id },
-          { creatorId: user.id },
-          { adminId: null }
-        ]
-      };
+      return {};
     }
     return {
       OR: [
         { adminId: user.id },
-        { creatorId: user.id }
+        { creatorId: user.id },
+        { adminId: null }
       ]
     };
   }
@@ -94,21 +104,16 @@ const getCustomerFilter = (user) => {
 
 const getLoanFilter = (user) => {
   if (!user) return { id: '__NONE__' };
-  if (user.role === 'ADMIN') {
+  if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
     if (isLegacyAdmin(user)) {
-      return {
-        OR: [
-          { adminId: user.id },
-          { creatorId: user.id },
-          { adminId: null, customer: { OR: [{ adminId: user.id }, { creatorId: user.id }, { adminId: null }] } }
-        ]
-      };
+      return {};
     }
     return {
       OR: [
         { adminId: user.id },
         { creatorId: user.id },
-        { customer: { OR: [{ adminId: user.id }, { creatorId: user.id }] } }
+        { adminId: null },
+        { customer: { OR: [{ adminId: user.id }, { creatorId: user.id }, { adminId: null }] } }
       ]
     };
   }
@@ -140,20 +145,15 @@ const getLoanFilter = (user) => {
 
 const getUserFilter = (user) => {
   if (!user) return { id: '__NONE__' };
-  if (user.role === 'ADMIN') {
+  if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
     if (isLegacyAdmin(user)) {
-      return {
-        OR: [
-          { adminId: user.id },
-          { creatorId: user.id },
-          { adminId: null }
-        ]
-      };
+      return {};
     }
     return {
       OR: [
         { adminId: user.id },
-        { creatorId: user.id }
+        { creatorId: user.id },
+        { adminId: null }
       ]
     };
   }

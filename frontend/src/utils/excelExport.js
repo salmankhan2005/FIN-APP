@@ -183,21 +183,84 @@ export async function exportFullDataToExcel(exportData, filenamePrefix = 'Financ
     });
   });
 
-  // Notes section
+  // Quick Data Overview on Summary Sheet
+  if (loans.length > 0) {
+    wsSummary.addRow([]);
+    const loanTitleRow = wsSummary.addRow(['🏦 ACTIVE LOANS SNAPSHOT', '', '', '']);
+    loanTitleRow.getCell(1).font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF581C87' } };
+    
+    const loanSubHeader = wsSummary.addRow(['Loan Number', 'Customer Name', 'Principal (₹)', 'Installment Due / Status']);
+    styleHeaderRow(wsSummary, loanSubHeader.number, 'FF7C3AED');
+    
+    loans.slice(0, 15).forEach((l, i) => {
+      const isEven = i % 2 === 0;
+      const bg = isEven ? 'FFFFFFFF' : 'FFF5F3FF';
+      const lr = wsSummary.addRow([
+        l.loanNumber || '-',
+        l.customer?.name || '-',
+        Number(l.principalAmount) || 0,
+        `₹${(Number(l.installmentAmount) || 0).toLocaleString('en-IN')} (${l.status})`
+      ]);
+      lr.height = 22;
+      lr.eachCell((cell, colNum) => {
+        cell.font = { name: 'Segoe UI', size: 9.5, color: { argb: 'FF1E293B' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        cell.border = thinBorder;
+        if (colNum === 3) {
+          cell.numFmt = '₹#,##0.00';
+          cell.font = { bold: true };
+          cell.alignment = { vertical: 'middle', horizontal: 'right' };
+        } else {
+          cell.alignment = { vertical: 'middle', horizontal: colNum === 1 ? 'center' : 'left' };
+        }
+      });
+    });
+  }
+
+  if (customers.length > 0) {
+    wsSummary.addRow([]);
+    const custTitleRow = wsSummary.addRow(['👥 CUSTOMERS DIRECTORY SNAPSHOT', '', '', '']);
+    custTitleRow.getCell(1).font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF1E40AF' } };
+
+    const custSubHeader = wsSummary.addRow(['Customer Name', 'Phone Number', 'City / Village', 'Guarantor (Jamin)']);
+    styleHeaderRow(wsSummary, custSubHeader.number, 'FF2563EB');
+
+    customers.slice(0, 15).forEach((c, i) => {
+      const isEven = i % 2 === 0;
+      const bg = isEven ? 'FFFFFFFF' : 'FFF0F7FF';
+      const cr = wsSummary.addRow([
+        c.name || '-',
+        c.phone || c.user?.phone || '-',
+        c.city || '-',
+        c.jaminName ? `${c.jaminName} (${c.jaminPhone || 'No Phone'})` : 'None'
+      ]);
+      cr.height = 22;
+      cr.eachCell((cell, colNum) => {
+        cell.font = { name: 'Segoe UI', size: 9.5, color: { argb: 'FF1E293B' }, bold: colNum === 1 };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        cell.border = thinBorder;
+        cell.alignment = { vertical: 'middle', horizontal: colNum === 2 ? 'center' : 'left' };
+      });
+    });
+  }
+
+  // Instructions & Tab Guide
   wsSummary.addRow([]);
-  const noteRow = wsSummary.addRow(['ℹ️ INSTRUCTIONS & DATA INTEGRITY:']);
-  noteRow.getCell(1).font = { bold: true, color: { argb: 'FF1E40AF' } };
+  const noteRow = wsSummary.addRow(['ℹ️ DETAILED DATA SHEETS (See Tabs Below ⬇️):']);
+  noteRow.getCell(1).font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF065F46' } };
   const notes = [
-    '• Each tab at the bottom contains a distinct dataset (Customers, Loans, Repayments, Payments, Audit Logs) with dedicated color-coded columns.',
-    '• All currency figures are in Indian National Rupees (INR ₹).',
-    '• Status badges in each sheet are color-coded (Green = Active/Paid, Red = Overdue/Defaulted, Amber = Pending).',
+    '• Tab 2: "👥 Customers" — Full KYC records, ID numbers, addresses, guarantor details, GPS coordinates.',
+    '• Tab 3: "🏦 Loans" — Complete loan contracts, interest types, tenures, processing fees, recovery balances.',
+    '• Tab 4: "🔄 Repayments" — All scheduled installments, due dates, principal & interest breakdown, payment statuses.',
+    '• Tab 5: "💳 Payments" — Complete payment receipts, cash/UPI collection modes, transaction times, collector names.',
+    '• Tab 6: "📝 Audit Logs" — System security audit trails, user modifications, and timestamps.',
   ];
   notes.forEach((n) => {
     const nr = wsSummary.addRow([n]);
-    nr.getCell(1).font = { size: 9, color: { argb: 'FF64748B' } };
+    nr.getCell(1).font = { name: 'Segoe UI', size: 9.5, color: { argb: 'FF334155' } };
   });
 
-  autoFitColumns(wsSummary, 16);
+  autoFitColumns(wsSummary, 18);
 
   /* ═══════════════════════════════════════════════════════════════════════════
      2. CUSTOMERS SHEET (Royal Blue Theme)

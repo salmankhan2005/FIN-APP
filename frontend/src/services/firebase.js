@@ -91,12 +91,31 @@ export async function signInWithGoogleForAdmin() {
     await signOut(auth);
   } catch (_) {}
 
+  // Flag that Google auth is in progress so app knows to handle returned user
+  localStorage.setItem('finova_auth_pending', 'true');
+  localStorage.removeItem('finova_logged_out');
+  sessionStorage.removeItem('finova_logged_out');
+
   const provider = new GoogleAuthProvider();
   // 'select_account' forces Google to show the account picker dialog every single time!
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  console.info('[Firebase] Executing Google Sign-In redirect with prompt=select_account...');
-  await signInWithRedirect(auth, provider);
+  try {
+    console.info('[Firebase] Trying Google Sign-In with popup...');
+    const result = await signInWithPopup(auth, provider);
+    if (result?.user) {
+      localStorage.removeItem('finova_auth_pending');
+      return result.user;
+    }
+  } catch (popupErr) {
+    if (popupErr.code === 'auth/popup-closed-by-user' || popupErr.code === 'auth/cancelled-popup-request') {
+      localStorage.removeItem('finova_auth_pending');
+      throw popupErr;
+    }
+    console.warn('[Firebase] Popup blocked or failed, falling back to redirect:', popupErr?.code, popupErr?.message);
+    await signInWithRedirect(auth, provider);
+    return null;
+  }
   return null;
 }
 

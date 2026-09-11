@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
   const [isAuthenticating, setIsAuthenticating] = useState(() => {
     const hasStoredUser = !!(sessionStorage.getItem('user') || localStorage.getItem('user'));
     if (hasStoredUser) return false;
-    if (localStorage.getItem('finova_logged_out') === 'true') return false;
+    if (localStorage.getItem('finova_auth_pending') === 'true') return true;
     return isReturningFromGoogleRedirect();
   });
   const authSyncInProgress = useRef(false);
@@ -59,22 +59,26 @@ export function AuthProvider({ children }) {
             console.warn('[Auth] Google redirect login error:', err);
             setIsAuthenticating(false);
           } finally {
+            localStorage.removeItem('finova_auth_pending');
             authSyncInProgress.current = false;
           }
         } else {
+          localStorage.removeItem('finova_auth_pending');
           setIsAuthenticating(false);
         }
       })
       .catch((err) => {
         redirectCheckDone = true;
         console.warn('[Auth] Google redirect check error:', err);
+        localStorage.removeItem('finova_auth_pending');
         setIsAuthenticating(false);
       });
 
     // 2. Listen for Firebase Auth state changes
     const unsubscribe = listenToFirebaseAuth(async (firebaseUser) => {
-      // Do not auto-relogin if user explicitly logged out
-      if (localStorage.getItem('finova_logged_out') === 'true' || sessionStorage.getItem('finova_logged_out') === 'true') {
+      // Do not auto-relogin if user explicitly logged out and no auth is pending
+      const isAuthPending = localStorage.getItem('finova_auth_pending') === 'true';
+      if (localStorage.getItem('finova_logged_out') === 'true' && !isAuthPending) {
         setIsAuthenticating(false);
         return;
       }
@@ -84,8 +88,8 @@ export function AuthProvider({ children }) {
         let currentEmail = null;
         try { currentEmail = stored ? JSON.parse(stored)?.email : null; } catch (_) {}
 
-        // Only sync if user was already logged in or returning from Google redirect
-        if (currentEmail !== firebaseUser.email && (stored || isReturningFromGoogleRedirect())) {
+        // Only sync if user was already logged in or an auth attempt is pending
+        if (currentEmail !== firebaseUser.email && (stored || isAuthPending || isReturningFromGoogleRedirect())) {
           console.info('[Auth] Firebase state: Google user detected, syncing with backend:', firebaseUser.email);
           authSyncInProgress.current = true;
           setIsAuthenticating(true);
@@ -95,6 +99,7 @@ export function AuthProvider({ children }) {
             console.error('[Auth] Failed to sync Google login with backend:', err);
             setIsAuthenticating(false);
           } finally {
+            localStorage.removeItem('finova_auth_pending');
             authSyncInProgress.current = false;
           }
         } else {

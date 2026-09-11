@@ -49,7 +49,7 @@ const roleConfigs = {
 };
 
 export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const [form, setForm] = useState({ userId: '', password: '' });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');

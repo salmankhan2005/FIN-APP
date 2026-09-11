@@ -21,7 +21,7 @@ const getCleanApiUrl = () => {
     if (!stored.startsWith('http://') && !stored.startsWith('https://')) {
       stored = 'https://' + stored;
     }
-    if (stored.includes('841v') || (isProduction && (stored.includes('localhost') || stored.includes('127.0.0.1')))) {
+    if (stored.includes('awae') || (isProduction && (stored.includes('localhost') || stored.includes('127.0.0.1')))) {
       localStorage.removeItem('finova_api_url');
       stored = null;
     }

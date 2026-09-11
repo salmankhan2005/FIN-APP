@@ -4,6 +4,18 @@ import { initFirebaseForSuperAdmin, checkGoogleRedirectResult, listenToFirebaseA
 
 const AuthContext = createContext(null);
 
+// Detect if we are returning from a Google redirect
+// Firebase sets a key in sessionStorage before redirect
+function isReturningFromGoogleRedirect() {
+  try {
+    // Firebase Auth stores pending redirect info in localStorage under this key
+    const keys = Object.keys(localStorage);
+    return keys.some(k => k.includes('pendingRedirect') || k.includes('firebase:pendingRedirect'));
+  } catch (_) {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     if (typeof window === 'undefined') return null;
@@ -24,11 +36,46 @@ export function AuthProvider({ children }) {
   });
   
   const [loading, setLoading] = useState(false);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  // Start as true if no stored user AND we might be returning from Google redirect
+  const [isAuthenticating, setIsAuthenticating] = useState(() => {
+    const hasStoredUser = !!(sessionStorage.getItem('user') || localStorage.getItem('user'));
+    if (hasStoredUser) return false;
+    return isReturningFromGoogleRedirect();
+  });
   const authSyncInProgress = useRef(false);
 
   useEffect(() => {
-    // 1. Listen for Firebase Auth state changes (triggers on redirect return and restored sessions)
+    let redirectCheckDone = false;
+
+    // 1. Check direct redirect result first (most reliable after signInWithRedirect)
+    checkGoogleRedirectResult()
+      .then(async (googleUser) => {
+        redirectCheckDone = true;
+        if (googleUser && !authSyncInProgress.current) {
+          console.info('[Auth] Got redirect result for:', googleUser.email);
+          authSyncInProgress.current = true;
+          setIsAuthenticating(true);
+          try {
+            await loginWithGoogle(googleUser);
+          } catch (err) {
+            console.warn('[Auth] Google redirect login error:', err);
+            // Clear authenticating even on error so user is not stuck
+            setIsAuthenticating(false);
+          } finally {
+            authSyncInProgress.current = false;
+          }
+        } else {
+          // No redirect result — stop showing connecting screen if we have no user
+          setIsAuthenticating(false);
+        }
+      })
+      .catch((err) => {
+        redirectCheckDone = true;
+        console.warn('[Auth] Google redirect check error:', err);
+        setIsAuthenticating(false);
+      });
+
+    // 2. Listen for Firebase Auth state changes as a fallback
     const unsubscribe = listenToFirebaseAuth(async (firebaseUser) => {
       if (firebaseUser && firebaseUser.email && !authSyncInProgress.current) {
         const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
@@ -36,40 +83,26 @@ export function AuthProvider({ children }) {
         try { currentEmail = stored ? JSON.parse(stored)?.email : null; } catch (_) {}
 
         if (currentEmail !== firebaseUser.email) {
-          console.info('[Auth] Firebase detected Google user, authenticating with backend:', firebaseUser.email);
+          console.info('[Auth] Firebase state: Google user detected, syncing with backend:', firebaseUser.email);
           authSyncInProgress.current = true;
           setIsAuthenticating(true);
           try {
             await loginWithGoogle(firebaseUser);
           } catch (err) {
             console.error('[Auth] Failed to sync Google login with backend:', err);
-          } finally {
             setIsAuthenticating(false);
+          } finally {
             authSyncInProgress.current = false;
           }
+        } else {
+          // User already synced, stop authenticating screen
+          setIsAuthenticating(false);
         }
+      } else if (!firebaseUser) {
+        // No firebase user — if redirect check is done and no user, stop spinner
+        if (redirectCheckDone) setIsAuthenticating(false);
       }
     });
-
-    // 2. Also check direct redirect result explicitly
-    checkGoogleRedirectResult()
-      .then(async (googleUser) => {
-        if (googleUser && !authSyncInProgress.current) {
-          authSyncInProgress.current = true;
-          setIsAuthenticating(true);
-          try {
-            await loginWithGoogle(googleUser);
-          } catch (err) {
-            console.warn('[Auth] Google redirect login error:', err);
-          } finally {
-            setIsAuthenticating(false);
-            authSyncInProgress.current = false;
-          }
-        }
-      })
-      .catch((err) => {
-        console.warn('[Auth] Google redirect check error:', err);
-      });
 
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
 

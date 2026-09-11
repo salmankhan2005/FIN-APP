@@ -83,7 +83,7 @@ function AuthenticatedApp() {
 }
 
 function OnboardingGate() {
-  const { user, loading, isAuthenticating } = useAuth();
+  const { user, loading, isAuthenticating, switchOrRestoreRole } = useAuth();
 
   const [step, setStep] = useState(() => {
     if (user) return STEP_APP;
@@ -102,6 +102,21 @@ function OnboardingGate() {
       setStep(STEP_ROLE);
     }
   }, [user, isAuthenticating, loading, step]);
+
+  const handleSelectRole = (role) => {
+    setSelectedRole(role);
+    // If the chosen role is already logged in (active in-memory user or stored session), redirect directly!
+    if (switchOrRestoreRole && switchOrRestoreRole(role)) {
+      setStep(STEP_APP);
+      return;
+    }
+    if (user && ((role === 'ADMIN' && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) || user.role === role)) {
+      setStep(STEP_APP);
+      return;
+    }
+    // Not logged in -> proceed to login page
+    setStep(STEP_LOGIN);
+  };
 
   if (isAuthenticating) {
     return (
@@ -137,7 +152,7 @@ function OnboardingGate() {
       )}
       {step === STEP_ROLE && (
         <RoleSelectionPage
-          onSelectRole={(role) => { setSelectedRole(role); setStep(STEP_LOGIN); }}
+          onSelectRole={handleSelectRole}
           onBack={
             !sessionStorage.getItem('finova_onboarding_done') && !localStorage.getItem('finova_onboarding_done')
               ? () => setStep(STEP_ONBOARDING)

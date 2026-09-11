@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { signInWithGoogleForAdmin } from '../services/firebase';
 import { User, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
@@ -49,12 +49,19 @@ const roleConfigs = {
 };
 
 export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, isRoleLoggedIn, switchOrRestoreRole } = useAuth();
   const [form, setForm] = useState({ userId: '', password: '' });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // If this role is already logged in, restore session and redirect immediately
+  useEffect(() => {
+    if (isRoleLoggedIn && isRoleLoggedIn(selectedRole)) {
+      if (switchOrRestoreRole) switchOrRestoreRole(selectedRole);
+    }
+  }, [selectedRole]);
 
   const cfg = roleConfigs[selectedRole] || roleConfigs.ADMIN;
 

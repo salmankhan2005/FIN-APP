@@ -1,5 +1,6 @@
 import React from 'react';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const roles = [
   {
@@ -32,6 +33,8 @@ const roles = [
 ];
 
 export default function RoleSelectionPage({ onSelectRole, onBack }) {
+  const { isRoleLoggedIn } = useAuth();
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9990,
@@ -92,64 +95,95 @@ export default function RoleSelectionPage({ onSelectRole, onBack }) {
 
           {/* Role cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {roles.map((role) => (
-              <button
-                key={role.key}
-                onClick={() => onSelectRole(role.key)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  padding: 'clamp(14px, 2.2vh, 18px) 16px',
-                  background: role.bg, border: `1.5px solid ${role.border}`,
-                  borderRadius: 18, cursor: 'pointer',
-                  textAlign: 'left', width: '100%',
-                  transition: 'all 0.18s ease',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                  boxSizing: 'border-box',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = `0 6px 20px ${role.color}22`;
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)';
-                }}
-              >
-                {/* Icon circle */}
-                <div style={{
-                  width: 48, height: 48, borderRadius: 14,
-                  background: `${role.color}18`,
-                  border: `1.5px solid ${role.color}33`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 22, flexShrink: 0,
-                }}>
-                  {role.emoji}
-                </div>
+            {roles.map((role) => {
+              const loggedIn = isRoleLoggedIn ? isRoleLoggedIn(role.key) : false;
 
-                {/* Text */}
-                <div style={{ flex: 1, minWidth: 0 }}>
+              return (
+                <button
+                  key={role.key}
+                  onClick={() => onSelectRole(role.key)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    padding: 'clamp(14px, 2.2vh, 18px) 16px',
+                    background: role.bg,
+                    border: loggedIn ? `2px solid ${role.color}` : `1.5px solid ${role.border}`,
+                    borderRadius: 18, cursor: 'pointer',
+                    textAlign: 'left', width: '100%',
+                    transition: 'all 0.18s ease',
+                    boxShadow: loggedIn
+                      ? `0 4px 14px ${role.color}25`
+                      : '0 2px 8px rgba(0,0,0,0.03)',
+                    boxSizing: 'border-box',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = `0 6px 20px ${role.color}30`;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = loggedIn
+                      ? `0 4px 14px ${role.color}25`
+                      : '0 2px 8px rgba(0,0,0,0.03)';
+                  }}
+                >
+                  {/* Icon circle */}
                   <div style={{
-                    fontSize: 15, fontWeight: 700, color: '#0f172a',
-                    marginBottom: 2,
+                    width: 48, height: 48, borderRadius: 14,
+                    background: `${role.color}18`,
+                    border: `1.5px solid ${role.color}33`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 22, flexShrink: 0,
                   }}>
-                    {role.label}
+                    {role.emoji}
                   </div>
-                  <div style={{ fontSize: 12.5, color: '#64748b', fontWeight: 400 }}>
-                    {role.desc}
-                  </div>
-                </div>
 
-                {/* Arrow */}
-                <div style={{
-                  width: 30, height: 30, borderRadius: 10,
-                  background: `${role.color}14`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <ChevronRight size={16} color={role.color} />
-                </div>
-              </button>
-            ))}
+                  {/* Text */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      marginBottom: 2,
+                    }}>
+                      <span style={{
+                        fontSize: 15, fontWeight: 700, color: '#0f172a',
+                      }}>
+                        {role.label}
+                      </span>
+                      {loggedIn && (
+                        <span style={{
+                          background: '#dcfce7',
+                          color: '#15803d',
+                          border: '1px solid #86efac',
+                          borderRadius: 12,
+                          padding: '2px 7px',
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}>
+                          <CheckCircle2 size={11} color="#16a34a" /> Logged In
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: loggedIn ? '#166534' : '#64748b', fontWeight: loggedIn ? 500 : 400 }}>
+                      {loggedIn ? 'Active session • Tap to enter directly' : role.desc}
+                    </div>
+                  </div>
+
+                  {/* Arrow */}
+                  <div style={{
+                    width: 30, height: 30, borderRadius: 10,
+                    background: loggedIn ? role.color : `${role.color}14`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                    transition: 'all 0.18s ease',
+                  }}>
+                    <ChevronRight size={16} color={loggedIn ? '#ffffff' : role.color} />
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 

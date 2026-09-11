@@ -9,9 +9,10 @@ const slides = [
   },
   {
     title: 'Track Growth &\nSet Daily Goals',
-    desc: "Monitor your collection targets, track real-time cash flow, and achieve your financial milestones with ease.",
+    desc: 'Monitor your collection targets, track real-time cash flow, and achieve your financial milestones with ease.',
     color: '#2563eb',
     image: '/onboard2.jpg',
+    tag: '⚡ Real-Time Tracking & Goals',
   },
   {
     title: 'Instant Passbook\n& Smart Reports',
@@ -23,19 +24,13 @@ const slides = [
 
 export default function OnboardingSlides({ onFinish }) {
   const [current, setCurrent] = useState(0);
-  const [animating, setAnimating] = useState(false);
-  const [fadeIn, setFadeIn] = useState(true);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const touchStartX = useRef(null);
 
   const goTo = (idx) => {
-    if (animating || idx === current) return;
-    setAnimating(true);
-    setFadeIn(false);
-    setTimeout(() => {
-      setCurrent(idx);
-      setFadeIn(true);
-      setAnimating(false);
-    }, 200);
+    if (idx < 0 || idx >= slides.length) return;
+    setCurrent(idx);
   };
 
   const handleNext = () => {
@@ -43,14 +38,32 @@ export default function OnboardingSlides({ onFinish }) {
     else onFinish();
   };
 
-  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
-  const handleTouchEnd = (e) => {
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e) => {
     if (touchStartX.current === null) return;
-    const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 40) {
-      if (diff > 0 && current < slides.length - 1) goTo(current + 1);
-      else if (diff < 0 && current > 0) goTo(current - 1);
+    const currentX = e.touches[0].clientX;
+    const diff = currentX - touchStartX.current;
+    // Dampen drag at boundaries
+    if ((current === 0 && diff > 0) || (current === slides.length - 1 && diff < 0)) {
+      setDragOffset(diff * 0.28);
+    } else {
+      setDragOffset(diff);
     }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX.current === null) return;
+    setIsDragging(false);
+    if (dragOffset < -50 && current < slides.length - 1) {
+      goTo(current + 1);
+    } else if (dragOffset > 50 && current > 0) {
+      goTo(current - 1);
+    }
+    setDragOffset(0);
     touchStartX.current = null;
   };
 
@@ -67,8 +80,42 @@ export default function OnboardingSlides({ onFinish }) {
         overflow: 'hidden', height: '100dvh', width: '100vw',
       }}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      <style>{`
+        @keyframes slide2SmoothFloat {
+          0%, 100% {
+            transform: scale(1.24) translateY(0px);
+            filter: drop-shadow(0 10px 24px rgba(37, 99, 235, 0.14));
+          }
+          50% {
+            transform: scale(1.27) translateY(-8px);
+            filter: drop-shadow(0 16px 36px rgba(37, 99, 235, 0.26));
+          }
+        }
+        @keyframes slide2BadgePulse {
+          0%, 100% {
+            transform: translateY(0) scale(1);
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.2);
+          }
+          50% {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 8px 22px rgba(37, 99, 235, 0.35);
+          }
+        }
+        @keyframes slide2Aura {
+          0%, 100% {
+            opacity: 0.35;
+            transform: scale(0.92);
+          }
+          50% {
+            opacity: 0.65;
+            transform: scale(1.08);
+          }
+        }
+      `}</style>
+
       {/* Mobile-constrained container */}
       <div
         style={{
@@ -86,7 +133,7 @@ export default function OnboardingSlides({ onFinish }) {
         {/* Top Header / Skip */}
         <div style={{
           display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
-          height: 40, flexShrink: 0,
+          height: 40, flexShrink: 0, zIndex: 10,
         }}>
           {!isLast ? (
             <button
@@ -105,34 +152,116 @@ export default function OnboardingSlides({ onFinish }) {
           ) : <div style={{ height: 32 }} />}
         </div>
 
-        {/* Illustration Area — Scaled up for prominent 2D artwork */}
+        {/* Carousel Viewport */}
         <div style={{
           flex: '1 1 auto',
           minHeight: 0,
           maxHeight: '52vh',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'relative',
           overflow: 'hidden',
-          opacity: fadeIn ? 1 : 0,
-          transform: fadeIn ? 'scale(1)' : 'scale(0.96)',
-          transition: 'all 0.2s ease',
-          padding: 0,
+          width: '100%',
         }}>
-          <img
-            key={current}
-            src={slide.image}
-            alt={`Slide ${current + 1}`}
+          {/* Continuous Sliding Track for butter-smooth transitions */}
+          <div
             style={{
-              maxHeight: '100%',
-              maxWidth: '100%',
-              width: 'auto',
-              height: 'auto',
-              objectFit: 'contain',
-              transform: 'scale(1.26)',
-              transformOrigin: 'center center',
-              userSelect: 'none',
-              pointerEvents: 'none',
+              display: 'flex',
+              height: '100%',
+              width: `${slides.length * 100}%`,
+              transform: isDragging
+                ? `translateX(calc(-${current * (100 / slides.length)}% + ${dragOffset}px))`
+                : `translateX(-${current * (100 / slides.length)}%)`,
+              transition: isDragging ? 'none' : 'transform 0.48s cubic-bezier(0.16, 1, 0.3, 1)',
+              willChange: 'transform',
             }}
-          />
+          >
+            {slides.map((s, idx) => {
+              const isActive = idx === current;
+              const isSlide2 = idx === 1;
+
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    width: `${100 / slides.length}%`,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    padding: '0 8px',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {/* Subtle ambient aura for Slide 2 */}
+                  {isSlide2 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        width: '260px',
+                        height: '260px',
+                        borderRadius: '50%',
+                        background: 'radial-gradient(circle, rgba(37, 99, 235, 0.18) 0%, rgba(37, 99, 235, 0) 70%)',
+                        animation: isActive ? 'slide2Aura 4s ease-in-out infinite' : 'none',
+                        pointerEvents: 'none',
+                        zIndex: 1,
+                      }}
+                    />
+                  )}
+
+                  {/* Artwork image with custom smooth animation for slide 2 */}
+                  <img
+                    src={s.image}
+                    alt={`Slide ${idx + 1}`}
+                    style={{
+                      maxHeight: '100%',
+                      maxWidth: '100%',
+                      width: 'auto',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      transform: isSlide2 && isActive
+                        ? 'scale(1.26)'
+                        : 'scale(1.24)',
+                      transformOrigin: 'center center',
+                      userSelect: 'none',
+                      pointerEvents: 'none',
+                      zIndex: 2,
+                      animation: isSlide2 && isActive ? 'slide2SmoothFloat 3.8s ease-in-out infinite alternate' : 'none',
+                      transition: 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), filter 0.45s ease',
+                    }}
+                  />
+
+                  {/* Floating chip for Slide 2 (Track Growth & Goals) */}
+                  {isSlide2 && isActive && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: '12px',
+                        zIndex: 3,
+                        background: 'rgba(255, 255, 255, 0.94)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(37, 99, 235, 0.25)',
+                        borderRadius: 20,
+                        padding: '6px 14px',
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        color: '#1e40af',
+                        animation: 'slide2BadgePulse 3.5s ease-in-out infinite',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#10b981' }} />
+                      <span>{s.tag}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Bottom Card Area */}
@@ -140,14 +269,12 @@ export default function OnboardingSlides({ onFinish }) {
           flexShrink: 0,
           display: 'flex', flexDirection: 'column',
           alignItems: 'center',
-          opacity: fadeIn ? 1 : 0,
-          transform: fadeIn ? 'translateY(0)' : 'translateY(6px)',
-          transition: 'all 0.2s ease',
+          width: '100%',
         }}>
           {/* Pagination Pill Indicators */}
           <div style={{
             display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6,
-            marginBottom: 12,
+            marginBottom: 14,
           }}>
             {slides.map((_, i) => (
               <button
@@ -155,31 +282,47 @@ export default function OnboardingSlides({ onFinish }) {
                 onClick={() => goTo(i)}
                 aria-label={`Go to slide ${i + 1}`}
                 style={{
-                  width: i === current ? 24 : 12,
+                  width: i === current ? 26 : 10,
                   height: 5, borderRadius: 3, border: 'none', padding: 0,
                   background: i === current ? '#2563eb' : '#e2e8f0',
                   cursor: 'pointer',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
                 }}
               />
             ))}
           </div>
 
-          {/* Text Content — reduced font size */}
-          <div style={{ textAlign: 'center', marginBottom: 18 }}>
-            <h2 style={{
-              fontSize: 'clamp(18px, 4.8vw, 21px)', fontWeight: 800, color: '#0f172a',
-              margin: '0 0 6px 0', lineHeight: 1.25,
-              whiteSpace: 'pre-line',
-              letterSpacing: '-0.3px',
-            }}>
+          {/* Text Content with smooth height and cross-fade */}
+          <div style={{
+            textAlign: 'center',
+            marginBottom: 20,
+            minHeight: '74px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+            <h2
+              key={`title-${current}`}
+              style={{
+                fontSize: 'clamp(18px, 4.8vw, 21px)', fontWeight: 800, color: '#0f172a',
+                margin: '0 0 6px 0', lineHeight: 1.25,
+                whiteSpace: 'pre-line',
+                letterSpacing: '-0.3px',
+                animation: 'fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+            >
               {slide.title}
             </h2>
-            <p style={{
-              fontSize: 'clamp(11.5px, 3.1vw, 13px)', color: '#64748b', lineHeight: 1.5,
-              margin: '0 auto', fontWeight: 400,
-              maxWidth: 290,
-            }}>
+            <p
+              key={`desc-${current}`}
+              style={{
+                fontSize: 'clamp(11.5px, 3.1vw, 13px)', color: '#64748b', lineHeight: 1.5,
+                margin: '0 auto', fontWeight: 400,
+                maxWidth: 295,
+                animation: 'fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+            >
               {slide.desc}
             </p>
           </div>

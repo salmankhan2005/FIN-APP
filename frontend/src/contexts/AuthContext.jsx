@@ -173,6 +173,17 @@ export function AuthProvider({ children }) {
       localStorage.setItem('user', userStr);
       sessionStorage.setItem('finova_onboarding_done', 'true');
       localStorage.setItem('finova_onboarding_done', 'true');
+
+      // Persist role-specific session so returning users can jump straight in
+      try {
+        const normRole = (response.user.role === 'SUPER_ADMIN' || response.user.role === 'ADMIN') ? 'ADMIN' : response.user.role;
+        localStorage.setItem(`finova_session_${normRole}`, JSON.stringify({
+          token: response.accessToken,
+          refreshToken: response.refreshToken,
+          user: response.user,
+        }));
+      } catch (_) {}
+
       setUser(response.user);
       if (response.user.role === 'ADMIN') {
         initFirebaseForSuperAdmin(response.user);
@@ -213,6 +224,16 @@ export function AuthProvider({ children }) {
         localStorage.setItem('user', userStr);
         sessionStorage.setItem('finova_onboarding_done', 'true');
         localStorage.setItem('finova_onboarding_done', 'true');
+
+        // Persist admin session for Google sign-in
+        try {
+          localStorage.setItem('finova_session_ADMIN', JSON.stringify({
+            token: response.accessToken,
+            refreshToken: response.refreshToken,
+            user: userObj,
+          }));
+        } catch (_) {}
+
         setUser(userObj);
         if (userObj.role === 'ADMIN') {
           initFirebaseForSuperAdmin(userObj);
@@ -227,7 +248,62 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = async () => {
+  // Check if a specific role is currently logged in or has an active session saved
+  const isRoleLoggedIn = (targetRole) => {
+    if (!targetRole) return false;
+    const norm = (targetRole === 'SUPER_ADMIN' || targetRole === 'ADMIN') ? 'ADMIN' : targetRole;
+    // 1. Is active in-memory user matching this role?
+    if (user && ((norm === 'ADMIN' && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) || user.role === norm)) {
+      return true;
+    }
+    // 2. Is there a valid stored session for this role?
+    try {
+      const raw = localStorage.getItem(`finova_session_${norm}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.token && parsed?.user) return true;
+      }
+    } catch (_) {}
+    return false;
+  };
+
+  // Directly switch to or restore an already logged-in role session
+  const switchOrRestoreRole = (targetRole) => {
+    if (!targetRole) return false;
+    const norm = (targetRole === 'SUPER_ADMIN' || targetRole === 'ADMIN') ? 'ADMIN' : targetRole;
+    if (user && ((norm === 'ADMIN' && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) || user.role === norm)) {
+      return true;
+    }
+    try {
+      const raw = localStorage.getItem(`finova_session_${norm}`);
+      if (raw) {
+        const session = JSON.parse(raw);
+        if (session?.token && session?.user) {
+          sessionStorage.setItem('token', session.token);
+          localStorage.setItem('token', session.token);
+          if (session.refreshToken) {
+            sessionStorage.setItem('refreshToken', session.refreshToken);
+            localStorage.setItem('refreshToken', session.refreshToken);
+          }
+          const userStr = JSON.stringify(session.user);
+          sessionStorage.setItem('user', userStr);
+          localStorage.setItem('user', userStr);
+          localStorage.removeItem('finova_logged_out');
+          sessionStorage.removeItem('finova_logged_out');
+          setUser(session.user);
+          if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') {
+            initFirebaseForSuperAdmin(session.user);
+          }
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('[Auth] Error restoring role session:', e);
+    }
+    return false;
+  };
+
+  const logout = async (roleToLogout) => {
     // 1. Explicitly flag that user logged out so onAuthStateChanged doesn't auto-relogin
     localStorage.setItem('finova_logged_out', 'true');
     sessionStorage.setItem('finova_logged_out', 'true');
@@ -237,7 +313,15 @@ export function AuthProvider({ children }) {
       await signOutFromFirebase();
     } catch (_) {}
 
-    // 3. Clear local state immediately so UI responds instantly
+    // 3. Clear stored role session if specified or matching current user
+    const targetNorm = (roleToLogout || user?.role) === 'SUPER_ADMIN' || (roleToLogout || user?.role) === 'ADMIN'
+      ? 'ADMIN'
+      : (roleToLogout || user?.role);
+    if (targetNorm) {
+      try { localStorage.removeItem(`finova_session_${targetNorm}`); } catch (_) {}
+    }
+
+    // 4. Clear local state immediately so UI responds instantly
     const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
     sessionStorage.clear();
     localStorage.removeItem('token');
@@ -249,7 +333,7 @@ export function AuthProvider({ children }) {
     // Notify all components/caches to purge their admin-specific state
     try { window.dispatchEvent(new Event('finova:auth:logout')); } catch (_) {}
 
-    // 4. Fire backend logout in background
+    // 5. Fire backend logout in background
     if (refreshToken) {
       authAPI.logout().catch(() => {}); // fire-and-forget
     }
@@ -261,7 +345,20 @@ export function AuthProvider({ children }) {
   const isCustomer = user?.role === 'CUSTOMER';
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticating, login, loginWithGoogle, logout, isSuperAdmin, isAdmin, isAgent, isCustomer }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      isAuthenticating,
+      login,
+      loginWithGoogle,
+      logout,
+      isRoleLoggedIn,
+      switchOrRestoreRole,
+      isSuperAdmin,
+      isAdmin,
+      isAgent,
+      isCustomer
+    }}>
       {children}
     </AuthContext.Provider>
   );

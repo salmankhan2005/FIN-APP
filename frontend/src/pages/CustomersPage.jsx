@@ -22,13 +22,25 @@ export default function CustomersPage() {
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'NO_LOANS'
   const [credModalCustomer, setCredModalCustomer] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_LIMIT = 20;
 
   const location = useLocation();
   const navigate = useNavigate();
 
-  const load = async () => {
+  const load = async (targetPage = page) => {
     try {
-      setCustomers(await customersAPI.list({ search: debouncedSearch, limit: 100 }));
+      setLoading(true);
+      const result = await customersAPI.listWithMeta({
+        search: debouncedSearch || undefined,
+        page: targetPage,
+        limit: PAGE_LIMIT,
+      });
+      setCustomers(result.data || []);
+      setTotalPages(result.meta?.totalPages || 1);
+      setTotalCount(result.meta?.total || 0);
     } catch {
       toast.error('Failed to load customers');
     } finally {
@@ -41,9 +53,16 @@ export default function CustomersPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Reset to page 1 when search changes
   useEffect(() => {
-    load();
-  }, [debouncedSearch]);
+    setPage(1);
+    load(1);
+  }, [debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load when page changes (but not on initial mount — handled above)
+  useEffect(() => {
+    load(page);
+  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openAdd = () => {
     setEditCustomer(null);
@@ -99,10 +118,9 @@ export default function CustomersPage() {
     }
   };
 
-  // Filter calculations
-  const totalCount = customers.length;
+  // Client-side filter on the current page (status tabs)
   const activeLoansCount = customers.filter(c => (c.loans && c.loans.length > 0) || (c.activeLoans && c.activeLoans > 0)).length;
-  const noLoansCount = totalCount - activeLoansCount;
+  const noLoansCount = customers.length - activeLoansCount;
 
   const filteredCustomers = customers.filter(c => {
     const hasActive = (c.loans && c.loans.length > 0) || (c.activeLoans && c.activeLoans > 0);
@@ -158,7 +176,7 @@ export default function CustomersPage() {
           <div style={{ fontSize: 22, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>{isCustomer ? 'My Customer Profile' : 'Customers'}</span>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary-600)', background: 'rgba(99, 102, 241, 0.1)', padding: '2px 8px', borderRadius: 12 }}>
-              {customers.length} total
+              {totalCount} total
             </span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
@@ -667,6 +685,53 @@ export default function CustomersPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={page <= 1}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            style={{ fontWeight: 600, opacity: page <= 1 ? 0.4 : 1 }}
+          >
+            ← Prev
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+            .reduce((acc, p, idx, arr) => {
+              if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+              acc.push(p);
+              return acc;
+            }, [])
+            .map((item, idx) =>
+              item === '...' ? (
+                <span key={`ellipsis-${idx}`} style={{ color: 'var(--text-muted)', fontSize: 13, padding: '0 4px' }}>…</span>
+              ) : (
+                <button
+                  key={item}
+                  className={`btn btn-sm ${item === page ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setPage(item)}
+                  style={{ minWidth: 36, fontWeight: item === page ? 700 : 500 }}
+                >
+                  {item}
+                </button>
+              )
+            )
+          }
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            style={{ fontWeight: 600, opacity: page >= totalPages ? 0.4 : 1 }}
+          >
+            Next →
+          </button>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
+            Page {page} of {totalPages}
+          </span>
         </div>
       )}
 

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { apiCache } from './apiCache';
 
 const API_URL = 'https://fin-app-vtva.onrender.com/api';
 
@@ -112,6 +113,7 @@ export const authAPI = {
     const refreshToken = getAuthRefreshToken();
     const promise = refreshToken ? api.post('/auth/logout', { refreshToken }) : Promise.resolve();
     
+    apiCache.clearAll();
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('refreshToken');
     sessionStorage.removeItem('user');
@@ -125,61 +127,122 @@ export const authAPI = {
 
 // ─── Users ────────────────────────────────────────────────────────────────────
 export const usersAPI = {
-  list: (params) => api.get('/users', { params }).then(extractData),
-  create: (data) => api.post('/users', data).then(extractData),
-  update: (id, data) => api.patch(`/users/${id}`, data).then(extractData),
+  list: (params) => apiCache.getOrFetch('/users', params, () => api.get('/users', { params }).then(extractData), 30000),
+  create: (data) => api.post('/users', data).then(extractData).then(res => { apiCache.invalidate('users'); return res; }),
+  update: (id, data) => api.patch(`/users/${id}`, data).then(extractData).then(res => { apiCache.invalidate('users'); return res; }),
   changePassword: (id, data) => api.patch(`/users/${id}/password`, data).then(extractData),
-  delete: (id) => api.delete(`/users/${id}`).then(extractData),
+  delete: (id) => api.delete(`/users/${id}`).then(extractData).then(res => { apiCache.invalidate('users'); return res; }),
 };
 
 // ─── Customers ────────────────────────────────────────────────────────────────
 export const customersAPI = {
-  list: (params) => api.get('/customers', { params }).then(extractData),
+  list: (params) => apiCache.getOrFetch('/customers', params, () => api.get('/customers', { params }).then(extractData), 15000),
+  listWithMeta: (params) => apiCache.getOrFetch('/customers_meta', params, () => api.get('/customers', { params }).then(res => ({
+    data: res.data?.data || [],
+    meta: res.data?.meta || { total: 0, page: 1, limit: 20, totalPages: 1 }
+  })), 15000),
   get: (id) => api.get(`/customers/${id}`).then(extractData),
-  create: (data) => api.post('/customers', data).then(extractData),
-  update: (id, data) => api.put(`/customers/${id}`, data).then(extractData),
-  delete: (id) => api.delete(`/customers/${id}`).then(extractData),
-  setCredentials: (id, data) => api.post(`/customers/${id}/credentials`, data).then(extractData),
+  create: (data) => api.post('/customers', data).then(extractData).then(res => {
+    apiCache.invalidate('customers');
+    apiCache.invalidate('dashboard');
+    return res;
+  }),
+  update: (id, data) => api.put(`/customers/${id}`, data).then(extractData).then(res => {
+    apiCache.invalidate('customers');
+    apiCache.invalidate('dashboard');
+    return res;
+  }),
+  delete: (id) => api.delete(`/customers/${id}`).then(extractData).then(res => {
+    apiCache.invalidate('customers');
+    apiCache.invalidate('dashboard');
+    return res;
+  }),
+  setCredentials: (id, data) => api.post(`/customers/${id}/credentials`, data).then(extractData).then(res => {
+    apiCache.invalidate('customers');
+    return res;
+  }),
 };
 
 // ─── Loans ────────────────────────────────────────────────────────────────────
 export const loansAPI = {
-  list: (params) => api.get('/loans', { params }).then(extractData),
+  list: (params) => apiCache.getOrFetch('/loans', params, () => api.get('/loans', { params }).then(extractData), 15000),
+  listWithMeta: (params) => apiCache.getOrFetch('/loans_meta', params, () => api.get('/loans', { params }).then(res => ({
+    data: res.data?.data || [],
+    meta: res.data?.meta || { total: 0, page: 1, limit: 20, totalPages: 1 }
+  })), 15000),
   get: (id) => api.get(`/loans/${id}`).then(extractData),
-  create: (data) => api.post('/loans', data).then(extractData),
-  updateStatus: (id, data) => api.patch(`/loans/${id}/status`, data).then(extractData),
-  delete: (id) => api.delete(`/loans/${id}`).then(extractData),
+  create: (data) => api.post('/loans', data).then(extractData).then(res => {
+    apiCache.invalidate('loans');
+    apiCache.invalidate('dashboard');
+    return res;
+  }),
+  updateStatus: (id, data) => api.patch(`/loans/${id}/status`, data).then(extractData).then(res => {
+    apiCache.invalidate('loans');
+    apiCache.invalidate('dashboard');
+    return res;
+  }),
+  delete: (id) => api.delete(`/loans/${id}`).then(extractData).then(res => {
+    apiCache.invalidate('loans');
+    apiCache.invalidate('dashboard');
+    return res;
+  }),
   getPreclosure: (id) => api.get(`/loans/${id}/preclosure`).then(extractData),
   downloadReport: () => Promise.resolve({ data: 'Report available via backend only' }),
 };
 
 // ─── Repayments ───────────────────────────────────────────────────────────────
 export const repaymentsAPI = {
-  list: (params) => api.get('/repayments', { params }).then(extractData),
-  today: () => api.get('/repayments/today').then(extractData),
+  list: (params) => apiCache.getOrFetch('/repayments', params, () => api.get('/repayments', { params }).then(extractData), 10000),
+  today: () => apiCache.getOrFetch('/repayments/today', {}, () => api.get('/repayments/today').then(extractData), 10000),
 };
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
 export const paymentsAPI = {
-  collect: (data) => api.post('/payments', data).then(extractData),
-  collectPenalty: (data) => api.post('/payments/penalty', data).then(extractData),
-  collectPrincipal: (data) => api.post('/payments/principal', data).then(extractData),
-  close: (data) => api.post('/payments/close', data).then(extractData),
+  collect: (data) => api.post('/payments', data).then(extractData).then(res => {
+    apiCache.invalidate('dashboard');
+    apiCache.invalidate('repayments');
+    apiCache.invalidate('loans');
+    return res;
+  }),
+  collectPenalty: (data) => api.post('/payments/penalty', data).then(extractData).then(res => {
+    apiCache.invalidate('dashboard');
+    apiCache.invalidate('repayments');
+    return res;
+  }),
+  collectPrincipal: (data) => api.post('/payments/principal', data).then(extractData).then(res => {
+    apiCache.invalidate('dashboard');
+    apiCache.invalidate('loans');
+    return res;
+  }),
+  close: (data) => api.post('/payments/close', data).then(extractData).then(res => {
+    apiCache.invalidate('dashboard');
+    apiCache.invalidate('loans');
+    return res;
+  }),
   list: (params) => api.get('/payments', { params }).then(extractData),
 };
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export const dashboardAPI = {
-  summary: () => api.get('/dashboard/summary').then(extractData),
-  agent: (id) => api.get('/dashboard/agent', { params: { agentId: id } }).then(extractData),
-  profit: (params) => api.get('/dashboard/profit', { params }).then(extractData),
-  resetAllData: () => api.post('/dashboard/reset-all-data').then(extractData),
+  summary: (force = false) => {
+    if (force) apiCache.invalidate('/dashboard/summary');
+    return apiCache.getOrFetch('/dashboard/summary', {}, () => api.get('/dashboard/summary').then(extractData), 15000);
+  },
+  agent: (id, force = false) => {
+    if (force) apiCache.invalidate('/dashboard/agent');
+    return apiCache.getOrFetch('/dashboard/agent', { agentId: id }, () => api.get('/dashboard/agent', { params: { agentId: id } }).then(extractData), 15000);
+  },
+  profit: (params) => apiCache.getOrFetch('/dashboard/profit', params, () => api.get('/dashboard/profit', { params }).then(extractData), 20000),
+  resetAllData: () => api.post('/dashboard/reset-all-data').then(extractData).then(res => {
+    apiCache.clearAll();
+    return res;
+  }),
 };
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
 export const reportsAPI = {
-  defaulters: () => api.get('/reports/defaulters').then(extractData),
-  dailyCollection: (params) => api.get('/reports/daily-collection', { params }).then(extractData),
+  defaulters: () => apiCache.getOrFetch('/reports/defaulters', {}, () => api.get('/reports/defaulters').then(extractData), 20000),
+  dailyCollection: (params) => apiCache.getOrFetch('/reports/daily-collection', params, () => api.get('/reports/daily-collection', { params }).then(extractData), 15000),
   customer: (id) => api.get(`/customers/${id}`).then(extractData),
 };
 

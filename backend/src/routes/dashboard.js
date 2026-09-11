@@ -44,279 +44,255 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
     const customerFilter = getCustomerFilter(req.user);
     const loanFilter = getLoanFilter(req.user);
 
-    const [
-      activeLoans,
-      activeCustomers
-    ] = await Promise.all([
-      prisma.loan.count({ where: { status: 'ACTIVE', AND: [loanFilter] } }),
-      prisma.customer.count({ where: { isActive: true, AND: [customerFilter] } }),
-    ]);
-
-    // Financial aggregates (Overall)
-    const loanAgg = await prisma.loan.aggregate({
-      where: { status: { in: ['ACTIVE', 'CLOSED', 'DEFAULTED'] }, AND: [loanFilter] },
-      _sum: { principalAmount: true, totalPayable: true, totalInterest: true },
-    });
-
-    // Payments aggregate
-    const paymentAgg = await prisma.payment.aggregate({
-      where: { repayment: { loan: loanFilter } },
-      _sum: { amount: true },
-    });
-
-    // Today's Collection
-    const todaysPayments = await prisma.payment.aggregate({
-      where: {
-        collectedAt: { gte: startOfToday, lte: endOfToday },
-        repayment: { loan: loanFilter }
-      },
-      _sum: { amount: true },
-    });
-
-    // Today's Dues
-    const todaysDues = await prisma.repayment.aggregate({
-      where: {
-        dueDate: { gte: startOfToday, lte: endOfToday },
-        loan: loanFilter
-      },
-      _sum: { dueAmount: true, paidAmount: true },
-    });
-
-    // Pending Collections = ONLY already-due amounts (OVERDUE + PARTIAL + today's pending)
-    const pendingDues = await prisma.repayment.aggregate({
-      where: {
-        loan: loanFilter,
-        OR: [
-          { status: 'OVERDUE' },
-          { status: 'PARTIAL' },
-          { status: 'PENDING', dueDate: { lte: endOfToday } },
-        ]
-      },
-      _sum: { dueAmount: true, paidAmount: true },
-    });
-
-    // Overdue Loans Count (Distinct loans with overdue)
-    const overdueLoans = await prisma.repayment.groupBy({
-      by: ['loanId'],
-      where: {
-        status: 'OVERDUE',
-        loan: loanFilter
-      },
-    });
-
-    const overdueAgg = await prisma.repayment.aggregate({
-      where: {
-        status: 'OVERDUE',
-        loan: loanFilter
-      },
-      _sum: { dueAmount: true, paidAmount: true },
-    });
-
-    // Monthly Aggregates
-    const monthlyLoans = await prisma.loan.aggregate({
-      where: { createdAt: { gte: startOfMonth }, AND: [loanFilter] },
-      _sum: { principalAmount: true, totalInterest: true },
-    });
-
-    const monthlyPayments = await prisma.payment.aggregate({
-      where: {
-        collectedAt: { gte: startOfMonth },
-        repayment: { loan: loanFilter }
-      },
-      _sum: { amount: true },
-    });
-
-    // Calculate actual realized monthly interest & profit
-    const monthlyPaymentRecords = await prisma.payment.findMany({
-      where: {
-        collectedAt: { gte: startOfMonth },
-        repayment: { loan: loanFilter }
-      },
-      include: {
-        repayment: {
-          include: { loan: { select: { interestType: true, principalAmount: true, totalPayable: true, totalInterest: true } } }
-        }
-      }
-    });
-
-    let monthlyInterestIncome = 0;
-    let monthlyCashPrincipal = 0;
-    let monthlyCashInterest = 0;
-
-    monthlyPaymentRecords.forEach(p => {
-      const loan = p.repayment?.loan;
-      const amt = p.amount || 0;
-      if (!loan) return;
-      const type = loan.interestType || 'FLAT';
-      
-      if (type === 'FLAT') {
-        if (p.paymentType === 'PRINCIPAL') {
-          monthlyCashPrincipal += amt;
-        } else {
-          monthlyInterestIncome += amt;
-          monthlyCashInterest += amt;
-        }
-      } else if (type === 'EMI') {
-        const interestRatio = loan.totalPayable > 0 ? (loan.totalInterest / loan.totalPayable) : 0;
-        const intPortion = amt * interestRatio;
-        const princPortion = amt - intPortion;
-        monthlyInterestIncome += intPortion;
-        monthlyCashInterest += intPortion;
-        monthlyCashPrincipal += princPortion;
-      } else if (type === 'WITHOUT_INTEREST') {
-        monthlyCashPrincipal += amt;
-      }
-    });
-
-    const monthlyDeductionLoans = await prisma.loan.findMany({
-      where: {
-        createdAt: { gte: startOfMonth },
-        interestType: 'WITHOUT_INTEREST',
-        AND: [loanFilter]
-      },
-      select: { totalInterest: true, processingFee: true }
-    });
-
-    monthlyDeductionLoans.forEach(l => {
-      monthlyInterestIncome += (l.totalInterest || l.processingFee || 0);
-    });
-
-    monthlyInterestIncome = Math.round(monthlyInterestIncome * 100) / 100;
-
-    // === All-Time Actual Profit (what was really collected, not expected) ===
-    const allPaymentRecords = await prisma.payment.findMany({
-      where: {
-        repayment: { loan: loanFilter }
-      },
-      include: {
-        repayment: {
-          include: { loan: { select: { interestType: true, totalPayable: true, totalInterest: true } } }
-        }
-      }
-    });
-
-    let totalActualProfit = 0;
-    allPaymentRecords.forEach(p => {
-      const loan = p.repayment?.loan;
-      if (!loan) return;
-      const type = loan.interestType || 'FLAT';
-      if (type === 'FLAT') {
-        if (p.paymentType !== 'PRINCIPAL') {
-          totalActualProfit += (p.amount || 0);
-        }
-      } else if (type === 'EMI') {
-        const interestRatio = loan.totalPayable > 0 ? (loan.totalInterest / loan.totalPayable) : 0;
-        totalActualProfit += (p.amount || 0) * interestRatio;
-      }
-    });
-
-    // All deduction-based loans: interest was realized at disbursement
-    const allDeductionLoans = await prisma.loan.findMany({
-      where: {
-        interestType: 'WITHOUT_INTEREST',
-        AND: [loanFilter]
-      },
-      select: { totalInterest: true, processingFee: true }
-    });
-    allDeductionLoans.forEach(l => {
-      totalActualProfit += (l.totalInterest || l.processingFee || 0);
-    });
-    totalActualProfit = Math.round(totalActualProfit * 100) / 100;
-
-    // Upcoming Dues (Next 7 days)
-    const upcomingDues = await prisma.repayment.findMany({
-      where: { 
-        dueDate: { gt: endOfToday, lte: next7Days },
-        status: { in: ['PENDING', 'PARTIAL'] },
-        loan: loanFilter
-      },
-      include: { loan: { include: { customer: { select: { name: true, phone: true } } } } },
-      orderBy: { dueDate: 'asc' },
-      take: 10,
-    });
-
-    // Recent Collections (Last 5)
-    const recentCollections = await prisma.payment.findMany({
-      where: {
-        repayment: { loan: loanFilter }
-      },
-      include: { 
-        repayment: { include: { loan: { include: { customer: { select: { name: true } } } } } },
-        collectedBy: { select: { name: true } }
-      },
-      orderBy: { collectedAt: 'desc' },
-      take: 5,
-    });
-
-    // Monthly Chart Data (Last 6 months)
-    const months = [];
+    // Prepare 6-month chart date ranges
+    const monthRanges = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
       const start = new Date(d.getFullYear(), d.getMonth(), 1);
       const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-      
-      const [mPay, mLoan] = await Promise.all([
+      monthRanges.push({ name: start.toLocaleString('default', { month: 'short' }), start, end });
+    }
+
+    // Execute ALL dashboard aggregates and queries in parallel in a single batch
+    const [
+      activeLoans,
+      activeCustomers,
+      loanAgg,
+      paymentAgg,
+      todaysPayments,
+      todaysDues,
+      pendingDues,
+      overdueLoans,
+      overdueAgg,
+      monthlyLoans,
+      monthlyPayments,
+      monthlyFlatInterest,
+      monthlyFlatPrincipal,
+      monthlyDeductionLoans,
+      monthlyEmiPayments,
+      allFlatInterestPayments,
+      allDeductionLoans,
+      allEmiPayments,
+      upcomingDues,
+      recentCollections,
+      activeLoanRecords,
+      ...monthlyChartData
+    ] = await Promise.all([
+      // 0. Active loans count
+      prisma.loan.count({ where: { status: 'ACTIVE', AND: [loanFilter] } }),
+      // 1. Active customers count
+      prisma.customer.count({ where: { isActive: true, AND: [customerFilter] } }),
+      // 2. Financial aggregates
+      prisma.loan.aggregate({
+        where: { status: { in: ['ACTIVE', 'CLOSED', 'DEFAULTED'] }, AND: [loanFilter] },
+        _sum: { principalAmount: true, totalPayable: true, totalInterest: true },
+      }),
+      // 3. Payments aggregate
+      prisma.payment.aggregate({
+        where: { repayment: { loan: loanFilter } },
+        _sum: { amount: true },
+      }),
+      // 4. Today's collections
+      prisma.payment.aggregate({
+        where: { collectedAt: { gte: startOfToday, lte: endOfToday }, repayment: { loan: loanFilter } },
+        _sum: { amount: true },
+      }),
+      // 5. Today's dues
+      prisma.repayment.aggregate({
+        where: { dueDate: { gte: startOfToday, lte: endOfToday }, loan: loanFilter },
+        _sum: { dueAmount: true, paidAmount: true },
+      }),
+      // 6. Pending dues
+      prisma.repayment.aggregate({
+        where: {
+          loan: loanFilter,
+          OR: [
+            { status: 'OVERDUE' },
+            { status: 'PARTIAL' },
+            { status: 'PENDING', dueDate: { lte: endOfToday } },
+          ]
+        },
+        _sum: { dueAmount: true, paidAmount: true },
+      }),
+      // 7. Overdue loans
+      prisma.repayment.groupBy({
+        by: ['loanId'],
+        where: { status: 'OVERDUE', loan: loanFilter },
+      }),
+      // 8. Overdue aggregate
+      prisma.repayment.aggregate({
+        where: { status: 'OVERDUE', loan: loanFilter },
+        _sum: { dueAmount: true, paidAmount: true },
+      }),
+      // 9. Monthly loans
+      prisma.loan.aggregate({
+        where: { createdAt: { gte: startOfMonth }, AND: [loanFilter] },
+        _sum: { principalAmount: true, totalInterest: true },
+      }),
+      // 10. Monthly payments
+      prisma.payment.aggregate({
+        where: { collectedAt: { gte: startOfMonth }, repayment: { loan: loanFilter } },
+        _sum: { amount: true },
+      }),
+      // 11. Monthly flat interest (aggregated in DB)
+      prisma.payment.aggregate({
+        where: {
+          collectedAt: { gte: startOfMonth },
+          paymentType: { not: 'PRINCIPAL' },
+          repayment: { loan: { ...loanFilter, interestType: { not: 'EMI' } } }
+        },
+        _sum: { amount: true },
+      }),
+      // 12. Monthly flat principal (aggregated in DB)
+      prisma.payment.aggregate({
+        where: {
+          collectedAt: { gte: startOfMonth },
+          paymentType: 'PRINCIPAL',
+          repayment: { loan: { ...loanFilter, interestType: { not: 'EMI' } } }
+        },
+        _sum: { amount: true },
+      }),
+      // 13. Monthly deduction loans
+      prisma.loan.findMany({
+        where: { createdAt: { gte: startOfMonth }, interestType: 'WITHOUT_INTEREST', AND: [loanFilter] },
+        select: { totalInterest: true, processingFee: true }
+      }),
+      // 14. Monthly EMI payments
+      prisma.payment.findMany({
+        where: { collectedAt: { gte: startOfMonth }, repayment: { loan: { ...loanFilter, interestType: 'EMI' } } },
+        select: {
+          amount: true,
+          repayment: { select: { loan: { select: { totalPayable: true, totalInterest: true } } } }
+        }
+      }),
+      // 15. All-time flat interest (aggregated in DB — zero table scan!)
+      prisma.payment.aggregate({
+        where: {
+          paymentType: { not: 'PRINCIPAL' },
+          repayment: { loan: { ...loanFilter, interestType: { not: 'EMI' } } }
+        },
+        _sum: { amount: true },
+      }),
+      // 16. All deduction loans
+      prisma.loan.findMany({
+        where: { interestType: 'WITHOUT_INTEREST', AND: [loanFilter] },
+        select: { totalInterest: true, processingFee: true }
+      }),
+      // 17. All EMI payments
+      prisma.payment.findMany({
+        where: { repayment: { loan: { ...loanFilter, interestType: 'EMI' } } },
+        select: {
+          amount: true,
+          repayment: { select: { loan: { select: { totalPayable: true, totalInterest: true } } } }
+        }
+      }),
+      // 18. Upcoming dues
+      prisma.repayment.findMany({
+        where: { dueDate: { gt: endOfToday, lte: next7Days }, status: { in: ['PENDING', 'PARTIAL'] }, loan: loanFilter },
+        include: { loan: { include: { customer: { select: { name: true, phone: true } } } } },
+        orderBy: { dueDate: 'asc' },
+        take: 10,
+      }),
+      // 19. Recent collections
+      prisma.payment.findMany({
+        where: { repayment: { loan: loanFilter } },
+        include: {
+          repayment: { include: { loan: { include: { customer: { select: { name: true } } } } } },
+          collectedBy: { select: { name: true } }
+        },
+        orderBy: { collectedAt: 'desc' },
+        take: 5,
+      }),
+      // 20. Active loans for breakdown
+      prisma.loan.findMany({
+        where: { status: 'ACTIVE', AND: [loanFilter] },
+        select: {
+          id: true,
+          interestType: true,
+          principalAmount: true,
+          totalPayable: true,
+          outstandingPrincipal: true,
+          repayments: { select: { status: true, dueDate: true, dueAmount: true, paidAmount: true } },
+        },
+      }),
+      // 21...26. 6-Month chart queries executed concurrently
+      ...monthRanges.map(m => Promise.all([
         prisma.payment.aggregate({
-          where: {
-            collectedAt: { gte: start, lte: end },
-            repayment: { loan: loanFilter }
-          },
+          where: { collectedAt: { gte: m.start, lte: m.end }, repayment: { loan: loanFilter } },
           _sum: { amount: true }
         }),
         prisma.loan.aggregate({
-          where: {
-            createdAt: { gte: start, lte: end },
-            AND: [loanFilter]
-          },
+          where: { createdAt: { gte: m.start, lte: m.end }, AND: [loanFilter] },
           _sum: { principalAmount: true, totalInterest: true }
+        }),
+        prisma.payment.aggregate({
+          where: {
+            collectedAt: { gte: m.start, lte: m.end },
+            paymentType: { not: 'PRINCIPAL' },
+            repayment: { loan: { ...loanFilter, interestType: { not: 'EMI' } } }
+          },
+          _sum: { amount: true }
+        }),
+        prisma.loan.findMany({
+          where: { createdAt: { gte: m.start, lte: m.end }, interestType: 'WITHOUT_INTEREST', AND: [loanFilter] },
+          select: { totalInterest: true, processingFee: true }
         })
-      ]);
+      ]))
+    ]);
 
-      const mPayRecords = await prisma.payment.findMany({
-        where: {
-          collectedAt: { gte: start, lte: end },
-          repayment: { loan: loanFilter }
-        },
-        include: {
-          repayment: {
-            include: { loan: { select: { interestType: true, totalPayable: true, totalInterest: true } } }
-          }
-        }
-      });
-      let mInterest = 0;
-      mPayRecords.forEach(p => {
-        const loan = p.repayment?.loan;
-        if (!loan) return;
-        const type = loan.interestType || 'FLAT';
-        if (type === 'FLAT') {
-          if (p.paymentType !== 'PRINCIPAL') {
-            mInterest += (p.amount || 0);
-          }
-        } else if (type === 'EMI') {
-          const interestRatio = loan.totalPayable > 0 ? (loan.totalInterest / loan.totalPayable) : 0;
-          mInterest += (p.amount || 0) * interestRatio;
-        }
-      });
-      const mDeductionLoans = await prisma.loan.findMany({
-        where: {
-          createdAt: { gte: start, lte: end },
-          interestType: 'WITHOUT_INTEREST',
-          AND: [loanFilter]
-        },
-        select: { totalInterest: true, processingFee: true }
-      });
-      mDeductionLoans.forEach(l => { mInterest += (l.totalInterest || l.processingFee || 0); });
+    // Calculate monthly interest income
+    let monthlyCashPrincipal = monthlyFlatPrincipal._sum.amount || 0;
+    let monthlyCashInterest = monthlyFlatInterest._sum.amount || 0;
+    let monthlyInterestIncome = monthlyCashInterest;
+
+    monthlyEmiPayments.forEach(p => {
+      const loan = p.repayment?.loan;
+      const amt = p.amount || 0;
+      if (!loan) return;
+      const interestRatio = loan.totalPayable > 0 ? (loan.totalInterest / loan.totalPayable) : 0;
+      const intPortion = amt * interestRatio;
+      const princPortion = amt - intPortion;
+      monthlyInterestIncome += intPortion;
+      monthlyCashInterest += intPortion;
+      monthlyCashPrincipal += princPortion;
+    });
+
+    monthlyDeductionLoans.forEach(l => {
+      monthlyInterestIncome += (l.totalInterest || l.processingFee || 0);
+    });
+    monthlyInterestIncome = Math.round(monthlyInterestIncome * 100) / 100;
+
+    // Calculate all-time actual profit
+    let totalActualProfit = allFlatInterestPayments._sum.amount || 0;
+
+    allEmiPayments.forEach(p => {
+      const loan = p.repayment?.loan;
+      if (!loan) return;
+      const interestRatio = loan.totalPayable > 0 ? (loan.totalInterest / loan.totalPayable) : 0;
+      totalActualProfit += (p.amount || 0) * interestRatio;
+    });
+
+    allDeductionLoans.forEach(l => {
+      totalActualProfit += (l.totalInterest || l.processingFee || 0);
+    });
+    totalActualProfit = Math.round(totalActualProfit * 100) / 100;
+
+    // Format monthly chart results
+    const months = monthRanges.map((m, idx) => {
+      const [mPay, mLoan, mFlatInt, mDedLoans] = monthlyChartData[idx] || [{}, {}, {}, []];
+      let mInterest = mFlatInt?._sum?.amount || 0;
+      (mDedLoans || []).forEach(l => { mInterest += (l.totalInterest || l.processingFee || 0); });
       mInterest = Math.round(mInterest * 100) / 100;
-      
-      months.push({
-        name: start.toLocaleString('default', { month: 'short' }),
-        disbursed: mLoan._sum.principalAmount || 0,
-        collected: mPay._sum.amount || 0,
+
+      return {
+        name: m.name,
+        disbursed: mLoan?._sum?.principalAmount || 0,
+        collected: mPay?._sum?.amount || 0,
         interest: mInterest,
         profit: mInterest,
-      });
-    }
+      };
+    });
 
     // Outstanding separated by Loan Types and Principal vs Interest
     const activeLoanRecords = await prisma.loan.findMany({

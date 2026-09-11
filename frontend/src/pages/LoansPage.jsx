@@ -16,29 +16,51 @@ export default function LoansPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loanTypeFilter, setLoanTypeFilter] = useState('ALL');
   const [tenureFilter, setTenureFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_LIMIT = 20;
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 400);
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Reset page to 1 on any filter / search change
+  useEffect(() => {
+    setPage(1);
+  }, [filter, debouncedSearch, tenureFilter]);
+
   useEffect(() => {
     setLoading(true);
-    loansAPI.list({ status: filter || undefined, search: debouncedSearch || undefined, tenureUnit: tenureFilter || undefined, limit: 100 })
-      .then(r => setLoans(r))
+    loansAPI.listWithMeta({
+      status: filter || undefined,
+      search: debouncedSearch || undefined,
+      tenureUnit: tenureFilter || undefined,
+      page,
+      limit: PAGE_LIMIT,
+    })
+      .then(r => {
+        setLoans(r.data || []);
+        setTotalPages(r.meta?.totalPages || 1);
+        setTotalCount(r.meta?.total || 0);
+      })
       .catch(() => toast.error('Failed to load loans'))
       .finally(() => setLoading(false));
-  }, [filter, debouncedSearch, tenureFilter]);
+  }, [filter, debouncedSearch, tenureFilter, page]);
 
   const filteredLoans = loans.filter(l => {
     if (loanTypeFilter !== 'ALL' && l.interestType !== loanTypeFilter) return false;
     return true;
   });
 
+  // Outstanding is pre-computed server-side; fall back gracefully if missing
+  const getOutstanding = (loan) => loan.outstandingPrincipal ?? loan.principalAmount ?? 0;
+
   return (
     <div className="animate-in">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>{isCustomer ? 'My Loans' : 'Loans'} <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>({filteredLoans.length})</span></div>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>{isCustomer ? 'My Loans' : 'Loans'} <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>({totalCount})</span></div>
         {!isCustomer && (
           <Link to="/loans/create" className="btn btn-primary btn-sm"><Plus size={15} /> New</Link>
         )}
@@ -161,23 +183,8 @@ export default function LoansPage() {
         </div>
       ) : (
         filteredLoans.map(loan => {
-          const paid = loan.repayments?.filter(r => r.status === 'PAID').length || 0;
-          const total = loan.repayments?.length || 1;
-          const progress = Math.round((paid / total) * 100);
           const type = loan.interestType || 'FLAT';
-          
-          let outstanding = loan.outstandingPrincipal ?? loan.principalAmount;
-          if (type === 'FLAT') {
-            const startOfToday = new Date();
-            startOfToday.setHours(0, 0, 0, 0);
-            const unpaidDueInt = (loan.repayments || [])
-              .filter(r => r.status === 'OVERDUE' || (r.status === 'PENDING' && new Date(r.dueDate) <= startOfToday) || r.status === 'PARTIAL')
-              .reduce((acc, r) => acc + Math.max(0, (r.dueAmount || 0) - (r.paidAmount || 0)), 0);
-            outstanding = (loan.outstandingPrincipal ?? loan.principalAmount) + unpaidDueInt;
-          } else if (type === 'WITHOUT_INTEREST' || type === 'EMI') {
-            const totalCollected = (loan.repayments || []).reduce((acc, r) => acc + (r.paidAmount || 0), 0);
-            outstanding = Math.max(0, (loan.totalPayable || loan.principalAmount) - totalCollected);
-          }
+          const outstanding = getOutstanding(loan);
           return (
             <div key={loan.id} className="collection-card">
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -211,9 +218,9 @@ export default function LoansPage() {
                 </div>
               </div>
 
-              {/* Progress bar */}
+              {/* Progress bar (use repaymentProgress if available) */}
               <div style={{ height: 4, background: 'rgba(0,0,0,0.06)', borderRadius: 2, marginBottom: 10, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${progress}%`, background: progress === 100 ? 'var(--accent-500)' : 'var(--primary-500)', borderRadius: 2 }} />
+                <div style={{ height: '100%', width: `${loan.repaymentProgress ?? 0}%`, background: (loan.repaymentProgress ?? 0) === 100 ? 'var(--accent-500)' : 'var(--primary-500)', borderRadius: 2 }} />
               </div>
 
               <Link to={`/loans/${loan.id}`} className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center' }}>
@@ -222,6 +229,53 @@ export default function LoansPage() {
             </div>
           );
         })
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={page <= 1}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            style={{ fontWeight: 600, opacity: page <= 1 ? 0.4 : 1 }}
+          >
+            ← Prev
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+            .reduce((acc, p, idx, arr) => {
+              if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+              acc.push(p);
+              return acc;
+            }, [])
+            .map((item, idx) =>
+              item === '...' ? (
+                <span key={`ellipsis-${idx}`} style={{ color: 'var(--text-muted)', fontSize: 13, padding: '0 4px' }}>…</span>
+              ) : (
+                <button
+                  key={item}
+                  className={`btn btn-sm ${item === page ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setPage(item)}
+                  style={{ minWidth: 36, fontWeight: item === page ? 700 : 500 }}
+                >
+                  {item}
+                </button>
+              )
+            )
+          }
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            style={{ fontWeight: 600, opacity: page >= totalPages ? 0.4 : 1 }}
+          >
+            Next →
+          </button>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
+            Page {page} of {totalPages}
+          </span>
+        </div>
       )}
     </div>
   );

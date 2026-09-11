@@ -33,6 +33,8 @@ model User {
 
   @@index([email])
   @@index([phone])
+  @@index([adminId])
+  @@index([role])
 }
 
 model RefreshToken {
@@ -83,6 +85,8 @@ model Customer {
   @@index([name])
   @@index([idNumber])
   @@index([adminId])
+  @@index([adminId, isActive])
+  @@index([adminId, createdAt])
 }
 
 model Loan {
@@ -126,6 +130,9 @@ model Loan {
   @@index([customerId])
   @@index([status])
   @@index([loanNumber])
+  @@index([adminId])
+  @@index([adminId, status])
+  @@index([adminId, createdAt])
 }
 
 model Repayment {
@@ -161,6 +168,8 @@ model Repayment {
   @@index([dueDate])
   @@index([status])
   @@index([weekNo])
+  @@index([loanId, status])
+  @@index([status, dueDate])
 }
 
 model Payment {
@@ -178,6 +187,8 @@ model Payment {
 
   @@index([repaymentId])
   @@index([collectedAt])
+  @@index([paymentType])
+  @@index([collectedById, collectedAt])
 }
 
 model AuditLog {
@@ -219,4 +230,5 @@ model NotificationLog {
   @@index([customerId])
   @@index([status])
   @@index([createdAt])
+  @@index([type, readAt])
 }

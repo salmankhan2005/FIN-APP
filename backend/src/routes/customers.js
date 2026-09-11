@@ -27,7 +27,7 @@ router.get('/', authenticate, async (req, res) => {
       ]
     };
 
-    const [customers, total, credentialLogs] = await Promise.all([
+    const [customers, total] = await Promise.all([
       prisma.customer.findMany({
         where,
         skip,
@@ -41,16 +41,35 @@ router.get('/', authenticate, async (req, res) => {
         orderBy: { createdAt: 'desc' },
       }),
       prisma.customer.count({ where }),
-      prisma.auditLog.findMany({
-        where: { action: { in: ['AGENT_CREATED_CUSTOMER_CREDENTIALS', 'ADMIN_SET_CUSTOMER_CREDENTIALS'] } },
-        select: { entityId: true },
-      }),
     ]);
 
-    const credentialSet = new Set(credentialLogs.map(l => l.entityId));
-    const customersWithCreds = customers.map(c => ({ ...c, hasCredentials: credentialSet.has(c.id) }));
+    const customerIds = customers.map(c => c.id);
+    let credentialSet = new Set();
+    if (customerIds.length > 0) {
+      const credentialLogs = await prisma.auditLog.findMany({
+        where: {
+          action: { in: ['AGENT_CREATED_CUSTOMER_CREDENTIALS', 'ADMIN_SET_CUSTOMER_CREDENTIALS'] },
+          entityId: { in: customerIds }
+        },
+        select: { entityId: true },
+      });
+      credentialSet = new Set(credentialLogs.map(l => l.entityId));
+    }
 
-    res.json({ success: true, data: customersWithCreds, meta: { total, page: parseInt(page), limit: parseInt(limit) } });
+    const customersWithCreds = customers.map(c => ({ ...c, hasCredentials: credentialSet.has(c.id) }));
+    const parsedPage = parseInt(page);
+    const parsedLimit = parseInt(limit);
+
+    res.json({
+      success: true,
+      data: customersWithCreds,
+      meta: {
+        total,
+        page: parsedPage,
+        limit: parsedLimit,
+        totalPages: Math.ceil(total / parsedLimit) || 1
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

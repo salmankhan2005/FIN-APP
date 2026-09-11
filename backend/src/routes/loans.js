@@ -161,20 +161,55 @@ router.get('/', authenticate, async (req, res) => {
         include: {
           customer: { select: { id: true, name: true, phone: true } },
           agent: { select: { id: true, name: true } },
-          repayments: {
-            select: { id: true, status: true, dueAmount: true, paidAmount: true },
-          },
         },
         orderBy: { createdAt: 'desc' },
       }),
       prisma.loan.count({ where }),
     ]);
 
-    res.json({ success: true, data: loans, meta: { total, page: parseInt(page), limit: parseInt(limit) } });
+    // Efficiently compute repaymentProgress for each loan on this page
+    // using two grouped count queries (no N+1).
+    const loanIds = loans.map(l => l.id);
+    let progressMap = {};
+    if (loanIds.length > 0) {
+      const [paidCounts, totalCounts] = await Promise.all([
+        prisma.repayment.groupBy({
+          by: ['loanId'],
+          where: { loanId: { in: loanIds }, status: 'PAID' },
+          _count: { id: true },
+        }),
+        prisma.repayment.groupBy({
+          by: ['loanId'],
+          where: { loanId: { in: loanIds } },
+          _count: { id: true },
+        }),
+      ]);
+      const paidMap = Object.fromEntries(paidCounts.map(r => [r.loanId, r._count.id]));
+      const totMap  = Object.fromEntries(totalCounts.map(r => [r.loanId, r._count.id]));
+      progressMap = Object.fromEntries(loanIds.map(id => [
+        id,
+        totMap[id] ? Math.round(((paidMap[id] || 0) / totMap[id]) * 100) : 0
+      ]));
+    }
+
+    const parsedPage = parseInt(page);
+    const parsedLimit = parseInt(limit);
+
+    res.json({
+      success: true,
+      data: loans.map(l => ({ ...l, repaymentProgress: progressMap[l.id] ?? 0 })),
+      meta: {
+        total,
+        page: parsedPage,
+        limit: parsedLimit,
+        totalPages: Math.ceil(total / parsedLimit) || 1
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
 
 // GET /api/loans/:id/preclosure
 router.get('/:id/preclosure', authenticate, async (req, res) => {

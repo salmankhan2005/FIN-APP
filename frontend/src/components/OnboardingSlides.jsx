@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-/* ─── 5 Slide Definitions with Generated 2D Visual Illustrations ─── */
+/* ─── 5 Slide Definitions with Full 2D Visual Illustrations ─── */
 const slides = [
   {
     image: '/slide1_smart_lending.jpg',
@@ -129,10 +129,6 @@ export default function OnboardingSlides({ onFinish }) {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes ob-scaleUp {
-          from { opacity: 0.8; transform: scale(0.96); }
-          to   { opacity: 1; transform: scale(1); }
-        }
         .ob-btn:hover {
           filter: brightness(1.08);
           transform: translateY(-1px);
@@ -201,7 +197,7 @@ export default function OnboardingSlides({ onFinish }) {
           )}
         </div>
 
-        {/* Carousel Viewport with 2D Illustrations */}
+        {/* ─── Single-Image Carousel Viewport (100% Full Width per Slide) ─── */}
         <div style={{
           flex: '1 1 auto',
           minHeight: 0,
@@ -216,64 +212,61 @@ export default function OnboardingSlides({ onFinish }) {
           background: '#F8FAFC',
           border: '1px solid #F1F5F9',
         }}>
-          {/* Sliding track */}
+          {/* Sliding Track */}
           <div
             style={{
               display: 'flex',
+              width: '100%',
               height: '100%',
-              width: `${slides.length * 100}%`,
               transform: isDragging
-                ? `translateX(calc(-${current * (100 / slides.length)}% + ${dragOffset}px))`
-                : `translateX(-${current * (100 / slides.length)}%)`,
-              transition: isDragging ? 'none' : 'transform 0.48s cubic-bezier(0.16, 1, 0.3, 1)',
+                ? `translateX(calc(-${current * 100}% + ${dragOffset}px))`
+                : `translateX(-${current * 100}%)`,
+              transition: isDragging ? 'none' : 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
               willChange: 'transform',
             }}
           >
-            {slides.map((s, idx) => {
-              const isActive = idx === current;
-              return (
-                <div
-                  key={idx}
-                  style={{
-                    width: `${100 / slides.length}%`,
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative',
-                    padding: 8,
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <div style={{
-                    width: '100%',
-                    height: '100%',
-                    maxHeight: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 14,
-                    overflow: 'hidden',
-                    boxShadow: '0 6px 20px rgba(0,0,0,0.06)',
-                    background: '#FFFFFF',
-                    animation: isActive ? 'ob-scaleUp 0.4s ease-out' : 'none',
-                  }}>
-                    <img
-                      src={s.image}
-                      alt={s.badge}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        display: 'block',
-                      }}
-                      loading="lazy"
-                    />
-                  </div>
+            {slides.map((s, idx) => (
+              <div
+                key={idx}
+                style={{
+                  width: '100%',
+                  minWidth: '100%',
+                  maxWidth: '100%',
+                  height: '100%',
+                  flexShrink: 0,
+                  boxSizing: 'border-box',
+                  padding: '8px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  maxHeight: '100%',
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.06)',
+                  background: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <img
+                    src={s.image}
+                    alt={s.badge}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      display: 'block',
+                    }}
+                    loading="lazy"
+                  />
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -287,7 +280,7 @@ export default function OnboardingSlides({ onFinish }) {
           paddingTop: 8,
         }}>
 
-          {/* Dot Indicators */}
+          {/* Dot Indicators (1 Dot Per Slide, Total 5 Dots) */}
           <div style={{
             display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6,
             marginBottom: 10,

@@ -246,6 +246,9 @@ export function AuthProvider({ children }) {
     localStorage.setItem('finova_logged_out', 'true');
     setUser(null);
 
+    // Notify all components/caches to purge their admin-specific state
+    try { window.dispatchEvent(new Event('finova:auth:logout')); } catch (_) {}
+
     // 4. Fire backend logout in background
     if (refreshToken) {
       authAPI.logout().catch(() => {}); // fire-and-forget

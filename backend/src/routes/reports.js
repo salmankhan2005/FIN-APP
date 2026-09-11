@@ -3,7 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { authenticate, authorize } = require('../middleware/auth');
 const { syncOverdueStatus } = require('../utils/loanCalc');
-const { getLoanFilter, getCustomerFilter } = require('../utils/tenant');
+const { getLoanFilter, getCustomerFilter, assertOwnership } = require('../utils/tenant');
 const prisma = new PrismaClient();
 
 // GET /api/reports/defaulters
@@ -99,6 +99,11 @@ router.get('/customer/:id', authenticate, async (req, res) => {
       const isOwner = customer.userId === req.user.id || (req.user.phone && customer.phone === req.user.phone);
       if (!isOwner) {
         return res.status(403).json({ success: false, message: 'Access denied. You can only view your own report.' });
+      }
+    } else {
+      // Enforce admin workspace isolation
+      try { assertOwnership(customer, req.user, 'Customer'); } catch (ownerErr) {
+        return res.status(ownerErr.statusCode || 403).json({ success: false, message: ownerErr.message });
       }
     }
 

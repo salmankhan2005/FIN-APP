@@ -3,7 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../utils/audit');
-const { getCustomerFilter } = require('../utils/tenant');
+const { getCustomerFilter, assertOwnership } = require('../utils/tenant');
 const prisma = new PrismaClient();
 
 // GET /api/customers
@@ -79,6 +79,11 @@ router.get('/:id', authenticate, async (req, res) => {
       const isOwner = customer.userId === req.user.id || (req.user.phone && customer.phone === req.user.phone);
       if (!isOwner) {
         return res.status(403).json({ success: false, message: 'Access denied. You can only view your own customer details.' });
+      }
+    } else {
+      // Enforce admin workspace isolation — ADMIN and AGENT cannot access another admin's customer
+      try { assertOwnership(customer, req.user, 'Customer'); } catch (ownerErr) {
+        return res.status(ownerErr.statusCode || 403).json({ success: false, message: ownerErr.message });
       }
     }
 
@@ -225,6 +230,12 @@ router.post('/', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => 
 
 // PUT /api/customers/:id
 router.put('/:id', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => {
+  // Ownership check before update
+  const existingCustomer = await prisma.customer.findUnique({ where: { id: req.params.id }, select: { id: true, adminId: true } });
+  if (!existingCustomer) return res.status(404).json({ success: false, message: 'Customer not found' });
+  try { assertOwnership(existingCustomer, req.user, 'Customer'); } catch (ownerErr) {
+    return res.status(ownerErr.statusCode || 403).json({ success: false, message: ownerErr.message });
+  }
   try {
     const {
       name, phone, email, address, city, idType, idNumber,
@@ -292,6 +303,13 @@ router.put('/:id', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) =
 // DELETE /api/customers/:id
 router.delete('/:id', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
+    // Ownership check before delete
+    const existingCustomer = await prisma.customer.findUnique({ where: { id: req.params.id }, select: { id: true, adminId: true } });
+    if (!existingCustomer) return res.status(404).json({ success: false, message: 'Customer not found' });
+    try { assertOwnership(existingCustomer, req.user, 'Customer'); } catch (ownerErr) {
+      return res.status(ownerErr.statusCode || 403).json({ success: false, message: ownerErr.message });
+    }
+
     const activeLoans = await prisma.loan.findMany({
       where: {
         customerId: req.params.id,
@@ -329,6 +347,11 @@ router.post('/:id/credentials', authenticate, authorize('ADMIN', 'AGENT'), async
 
     if (!customer) {
       return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    // Ownership check — cannot set credentials for another admin's customer
+    try { assertOwnership(customer, req.user, 'Customer'); } catch (ownerErr) {
+      return res.status(ownerErr.statusCode || 403).json({ success: false, message: ownerErr.message });
     }
 
     const isAgent = req.user.role === 'AGENT';

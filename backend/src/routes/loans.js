@@ -4,7 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../utils/audit');
 const { generateLoanNumber, syncOverdueStatus } = require('../utils/loanCalc');
-const { getLoanFilter } = require('../utils/tenant');
+const { getLoanFilter, assertOwnership } = require('../utils/tenant');
 const prisma = new PrismaClient();
 
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -262,6 +262,12 @@ router.get('/:id', authenticate, async (req, res) => {
       if (!isOwner) {
         return res.status(403).json({ success: false, message: 'Access denied. You can only view your own loan details.' });
       }
+    } else {
+      // Enforce admin workspace isolation — check loan.adminId first, fall back to customer.adminId
+      const ownershipTarget = loan.adminId ? loan : loan.customer;
+      try { assertOwnership(ownershipTarget, req.user, 'Loan'); } catch (ownerErr) {
+        return res.status(ownerErr.statusCode || 403).json({ success: false, message: ownerErr.message });
+      }
     }
 
     res.json({ success: true, data: loan });
@@ -442,6 +448,12 @@ router.post('/', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => 
 // PATCH /api/loans/:id/status
 router.patch('/:id/status', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
+    const existing = await prisma.loan.findUnique({ where: { id: req.params.id }, select: { id: true, adminId: true, customer: { select: { adminId: true } } } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Loan not found' });
+    const ownershipTarget = existing.adminId ? existing : existing.customer;
+    try { assertOwnership(ownershipTarget, req.user, 'Loan'); } catch (ownerErr) {
+      return res.status(ownerErr.statusCode || 403).json({ success: false, message: ownerErr.message });
+    }
     const { status } = req.body;
     const loan = await prisma.loan.update({ where: { id: req.params.id }, data: { status } });
     await auditLog(req.user.id, 'UPDATE_LOAN_STATUS', 'Loan', loan.id, { status }, req);
@@ -455,8 +467,14 @@ router.patch('/:id/status', authenticate, authorize('ADMIN'), async (req, res) =
 router.delete('/:id', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const loanId = req.params.id;
-    const loan = await prisma.loan.findUnique({ where: { id: loanId } });
+    const loan = await prisma.loan.findUnique({ where: { id: loanId }, include: { customer: { select: { adminId: true } } } });
     if (!loan) return res.status(404).json({ success: false, message: 'Loan not found' });
+
+    // Ownership check
+    const ownershipTarget = loan.adminId ? loan : loan.customer;
+    try { assertOwnership(ownershipTarget, req.user, 'Loan'); } catch (ownerErr) {
+      return res.status(ownerErr.statusCode || 403).json({ success: false, message: ownerErr.message });
+    }
 
     // Cascade delete manually
     const repayments = await prisma.repayment.findMany({ where: { loanId }, select: { id: true } });

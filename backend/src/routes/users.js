@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../utils/audit');
-const { getUserFilter, isLegacyAdmin } = require('../utils/tenant');
+const { getUserFilter, isLegacyAdmin, assertOwnership } = require('../utils/tenant');
 const prisma = new PrismaClient();
 
 // GET /api/users — Admin only
@@ -83,6 +83,17 @@ router.get('/me', authenticate, async (req, res) => {
 // PATCH /api/users/:id
 router.patch('/:id', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
+    const targetUser = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, role: true, adminId: true } });
+    if (!targetUser) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Admins can only modify users they own (their own agents/customers)
+    // They can always modify themselves
+    if (targetUser.id !== req.user.id && targetUser.role !== 'ADMIN') {
+      try { assertOwnership({ adminId: targetUser.adminId }, req.user, 'User'); } catch (ownerErr) {
+        return res.status(ownerErr.statusCode || 403).json({ success: false, message: ownerErr.message });
+      }
+    }
+
     const { name, email, phone, role, isActive } = req.body;
     const user = await prisma.user.update({
       where: { id: req.params.id },
@@ -119,6 +130,11 @@ router.delete('/:id', authenticate, authorize('ADMIN'), async (req, res) => {
     // Prevent deletion of ADMINs
     if (user.role === 'ADMIN') {
       return res.status(403).json({ success: false, message: 'Admin users cannot be deleted.' });
+    }
+
+    // Ownership check — can only delete users belonging to this admin's workspace
+    try { assertOwnership({ adminId: user.adminId }, req.user, 'User'); } catch (ownerErr) {
+      return res.status(ownerErr.statusCode || 403).json({ success: false, message: ownerErr.message });
     }
 
     // Re-assign payments collected by this user to the admin performing the deletion

@@ -3,6 +3,53 @@ const isLegacyAdmin = (user) => {
   return user.phone === '6380372501' || user.email === 'admin@loanflow.com';
 };
 
+/**
+ * Returns the effective admin ID for the requesting user.
+ * For ADMIN: their own id.
+ * For AGENT: their adminId (the admin they belong to).
+ */
+const resolveAdminId = (user) => {
+  if (!user) return null;
+  if (user.role === 'ADMIN') return user.id;
+  if (user.role === 'AGENT') return user.adminId || null;
+  return null;
+};
+
+/**
+ * Throws a 403 error if the resource's adminId does not match the
+ * requesting user's resolved admin ID.
+ * Legacy admins bypass this check and can access all records.
+ * Records with null adminId are only accessible to legacy admins.
+ *
+ * @param {object} resource - The DB record (must have an adminId field)
+ * @param {object} user - req.user from auth middleware
+ * @param {string} resourceName - Human-readable name for error messages
+ */
+const assertOwnership = (resource, user, resourceName = 'Resource') => {
+  if (!resource) return; // 404 handled by caller
+  if (isLegacyAdmin(user)) return; // Legacy admin sees everything
+
+  const effectiveAdminId = resolveAdminId(user);
+  if (!effectiveAdminId) {
+    const err = new Error('Cannot resolve admin identity for ownership check.');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  // If the record has no adminId it's a legacy unowned record — only legacy admin can touch it
+  if (!resource.adminId) {
+    const err = new Error(`Access denied. This ${resourceName} is not assigned to any admin workspace.`);
+    err.statusCode = 403;
+    throw err;
+  }
+
+  if (resource.adminId !== effectiveAdminId) {
+    const err = new Error(`Access denied. This ${resourceName} belongs to a different admin workspace.`);
+    err.statusCode = 403;
+    throw err;
+  }
+};
+
 const getCustomerFilter = (user) => {
   if (!user) return { id: '__NONE__' };
   if (user.role === 'ADMIN') {
@@ -115,7 +162,10 @@ const getUserFilter = (user) => {
 
 module.exports = {
   isLegacyAdmin,
+  resolveAdminId,
+  assertOwnership,
   getCustomerFilter,
   getLoanFilter,
   getUserFilter
 };
+

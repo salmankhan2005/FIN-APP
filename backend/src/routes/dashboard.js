@@ -472,8 +472,163 @@ router.get('/data-summary', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), asy
   }
 });
 
+// GET /api/dashboard/export-data — Full data export for structured Excel workbook extraction
+router.get('/export-data', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), async (req, res) => {
+  try {
+    const customerFilter = getCustomerFilter(req.user);
+    const loanFilter = getLoanFilter(req.user);
+
+    const [customers, loans, repayments, payments, auditLogs] = await Promise.all([
+      prisma.customer.findMany({
+        where: customerFilter,
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+          address: true,
+          city: true,
+          idType: true,
+          idNumber: true,
+          latitude: true,
+          longitude: true,
+          notificationPref: true,
+          jaminName: true,
+          jaminPhone: true,
+          jaminAddress: true,
+          jaminRelationship: true,
+          jaminIdType: true,
+          jaminIdNumber: true,
+          isActive: true,
+          createdAt: true,
+          user: { select: { email: true, phone: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.loan.findMany({
+        where: loanFilter,
+        select: {
+          id: true,
+          loanNumber: true,
+          principalAmount: true,
+          interestRate: true,
+          interestType: true,
+          tenure: true,
+          tenureUnit: true,
+          processingFee: true,
+          totalInterest: true,
+          totalPayable: true,
+          installmentAmount: true,
+          interestCollected: true,
+          outstandingPrincipal: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          disbursedAt: true,
+          createdAt: true,
+          customer: { select: { name: true, phone: true, city: true } },
+          agent: { select: { name: true, phone: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.repayment.findMany({
+        where: { loan: loanFilter },
+        select: {
+          id: true,
+          installmentNo: true,
+          weekNo: true,
+          dayNo: true,
+          dueDate: true,
+          dueAmount: true,
+          principal: true,
+          interest: true,
+          penaltyAmount: true,
+          penaltyPaid: true,
+          penaltyStatus: true,
+          paidAmount: true,
+          paidAt: true,
+          status: true,
+          loan: {
+            select: {
+              loanNumber: true,
+              interestType: true,
+              customer: { select: { name: true, phone: true } }
+            }
+          }
+        },
+        orderBy: [{ dueDate: 'asc' }, { installmentNo: 'asc' }]
+      }),
+      prisma.payment.findMany({
+        where: { repayment: { loan: loanFilter } },
+        select: {
+          id: true,
+          amount: true,
+          paymentMode: true,
+          paymentType: true,
+          reference: true,
+          notes: true,
+          collectedAt: true,
+          repayment: {
+            select: {
+              installmentNo: true,
+              loan: {
+                select: {
+                  loanNumber: true,
+                  customer: { select: { name: true, phone: true } }
+                }
+              }
+            }
+          },
+          collectedBy: { select: { name: true, phone: true } }
+        },
+        orderBy: { collectedAt: 'desc' }
+      }),
+      prisma.auditLog.findMany({
+        where: { userId: req.user.id },
+        select: {
+          id: true,
+          action: true,
+          entity: true,
+          entityId: true,
+          details: true,
+          ipAddress: true,
+          userAgent: true,
+          createdAt: true,
+          user: { select: { name: true, email: true } }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 1000
+      })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        exportedAt: new Date().toISOString(),
+        adminName: req.user.name,
+        adminEmail: req.user.email,
+        counts: {
+          customers: customers.length,
+          loans: loans.length,
+          repayments: repayments.length,
+          payments: payments.length,
+          auditLogs: auditLogs.length
+        },
+        customers,
+        loans,
+        repayments,
+        payments,
+        auditLogs
+      }
+    });
+  } catch (error) {
+    console.error('export-data error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // POST /api/dashboard/reset-all-data — Reset production database
-router.post('/reset-all-data', authenticate, authorize('ADMIN'), async (req, res) => {
+router.post('/reset-all-data', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), async (req, res) => {
   try {
     const customerFilter = getCustomerFilter(req.user);
     const loanFilter = getLoanFilter(req.user);

@@ -229,6 +229,7 @@ export const dashboardAPI = {
     return apiCache.getOrFetch('/dashboard/summary', {}, () => api.get('/dashboard/summary').then(extractData), 15000);
   },
   dataSummary: () => api.get('/dashboard/data-summary').then(extractData),
+  exportData: () => api.get('/dashboard/export-data').then(extractData),
   agent: (id, force = false) => {
     if (force) apiCache.invalidate('/dashboard/agent');
     return apiCache.getOrFetch('/dashboard/agent', { agentId: id }, () => api.get('/dashboard/agent', { params: { agentId: id } }).then(extractData), 15000);

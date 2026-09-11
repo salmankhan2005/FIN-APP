@@ -295,17 +295,7 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
     });
 
     // Outstanding separated by Loan Types and Principal vs Interest
-    const activeLoanRecords = await prisma.loan.findMany({
-      where: { status: 'ACTIVE', AND: [loanFilter] },
-      select: {
-        id: true,
-        interestType: true,
-        principalAmount: true,
-        totalPayable: true,
-        outstandingPrincipal: true,
-        repayments: { select: { status: true, dueDate: true, dueAmount: true, paidAmount: true } },
-      },
-    });
+    // activeLoanRecords is already fetched via Promise.all above
 
     let totalOutstandingPrincipal = 0;
     let totalOutstandingInterest = 0;

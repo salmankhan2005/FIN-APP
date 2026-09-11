@@ -5,7 +5,8 @@ import {
   GoogleAuthProvider, 
   signInWithPopup, 
   signInWithRedirect, 
-  getRedirectResult 
+  getRedirectResult,
+  onAuthStateChanged
 } from "firebase/auth";
 
 // Your web app's Firebase configuration
@@ -22,7 +23,7 @@ const firebaseConfig = {
 let app = null;
 let analytics = null;
 
-function getFirebaseAuth() {
+export function getFirebaseAuth() {
   let firebaseApp;
   if (!getApps().length) {
     firebaseApp = initializeApp(firebaseConfig);
@@ -30,6 +31,14 @@ function getFirebaseAuth() {
     firebaseApp = getApp();
   }
   return getAuth(firebaseApp);
+}
+
+/**
+ * Listen to Firebase Auth state changes
+ */
+export function listenToFirebaseAuth(callback) {
+  const auth = getFirebaseAuth();
+  return onAuthStateChanged(auth, callback);
 }
 
 /**

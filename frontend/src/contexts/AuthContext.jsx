@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { authAPI } from '../services/api';
-import { initFirebaseForSuperAdmin, checkGoogleRedirectResult } from '../services/firebase';
+import { initFirebaseForSuperAdmin, checkGoogleRedirectResult, listenToFirebaseAuth } from '../services/firebase';
 
 const AuthContext = createContext(null);
 
@@ -24,15 +24,47 @@ export function AuthProvider({ children }) {
   });
   
   const [loading, setLoading] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const authSyncInProgress = useRef(false);
 
   useEffect(() => {
-    // Check if user is returning from a Google Sign-In redirect
+    // 1. Listen for Firebase Auth state changes (triggers on redirect return and restored sessions)
+    const unsubscribe = listenToFirebaseAuth(async (firebaseUser) => {
+      if (firebaseUser && firebaseUser.email && !authSyncInProgress.current) {
+        const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
+        let currentEmail = null;
+        try { currentEmail = stored ? JSON.parse(stored)?.email : null; } catch (_) {}
+
+        if (currentEmail !== firebaseUser.email) {
+          console.info('[Auth] Firebase detected Google user, authenticating with backend:', firebaseUser.email);
+          authSyncInProgress.current = true;
+          setIsAuthenticating(true);
+          try {
+            await loginWithGoogle(firebaseUser);
+          } catch (err) {
+            console.error('[Auth] Failed to sync Google login with backend:', err);
+          } finally {
+            setIsAuthenticating(false);
+            authSyncInProgress.current = false;
+          }
+        }
+      }
+    });
+
+    // 2. Also check direct redirect result explicitly
     checkGoogleRedirectResult()
-      .then((googleUser) => {
-        if (googleUser) {
-          loginWithGoogle(googleUser).catch((err) => {
+      .then(async (googleUser) => {
+        if (googleUser && !authSyncInProgress.current) {
+          authSyncInProgress.current = true;
+          setIsAuthenticating(true);
+          try {
+            await loginWithGoogle(googleUser);
+          } catch (err) {
             console.warn('[Auth] Google redirect login error:', err);
-          });
+          } finally {
+            setIsAuthenticating(false);
+            authSyncInProgress.current = false;
+          }
         }
       })
       .catch((err) => {
@@ -42,8 +74,6 @@ export function AuthProvider({ children }) {
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
 
     if (token && user) {
-      // Verify and sync user details in the background — with a 5s timeout
-      // so a cold-starting backend doesn't delay the UI
       const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 5000)
       );
@@ -62,9 +92,7 @@ export function AuthProvider({ children }) {
           }
         })
         .catch((err) => {
-          // Timeout or network error — keep cached user, don't log out
           if (err?.message === 'timeout' || !err?.response) return;
-          // ONLY clear session if server explicitly rejects token with HTTP 401
           if (err.response?.status === 401) {
             sessionStorage.removeItem('token');
             sessionStorage.removeItem('refreshToken');
@@ -76,6 +104,10 @@ export function AuthProvider({ children }) {
           }
         });
     }
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, []);
 
   const login = async (phone, agentId, role) => {
@@ -100,8 +132,9 @@ export function AuthProvider({ children }) {
       const userStr = JSON.stringify(response.user);
       sessionStorage.setItem('user', userStr);
       localStorage.setItem('user', userStr);
+      sessionStorage.setItem('finova_onboarding_done', 'true');
+      localStorage.setItem('finova_onboarding_done', 'true');
       setUser(response.user);
-      // Initialize Firebase Analytics ONLY for Super Admin
       if (response.user.role === 'ADMIN') {
         initFirebaseForSuperAdmin(response.user);
       }
@@ -111,6 +144,7 @@ export function AuthProvider({ children }) {
 
   const loginWithGoogle = async (googleUser) => {
     try {
+      setIsAuthenticating(true);
       const response = await authAPI.googleLogin({
         email: googleUser.email,
         name: googleUser.displayName,
@@ -136,6 +170,8 @@ export function AuthProvider({ children }) {
         const userStr = JSON.stringify(userObj);
         sessionStorage.setItem('user', userStr);
         localStorage.setItem('user', userStr);
+        sessionStorage.setItem('finova_onboarding_done', 'true');
+        localStorage.setItem('finova_onboarding_done', 'true');
         setUser(userObj);
         if (userObj.role === 'ADMIN') {
           initFirebaseForSuperAdmin(userObj);
@@ -145,6 +181,8 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error('[Auth] Google login error:', err);
       throw err;
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -169,7 +207,7 @@ export function AuthProvider({ children }) {
   const isCustomer = user?.role === 'CUSTOMER';
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, logout, isSuperAdmin, isAdmin, isAgent, isCustomer }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticating, login, loginWithGoogle, logout, isSuperAdmin, isAdmin, isAgent, isCustomer }}>
       {children}
     </AuthContext.Provider>
   );

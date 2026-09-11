@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { signInWithGoogleForAdmin, checkGoogleRedirectResult } from '../services/firebase';
+import { signInWithGoogleForAdmin } from '../services/firebase';
 import { User, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 const roleConfigs = {
@@ -49,7 +49,7 @@ const roleConfigs = {
 };
 
 export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
   const [form, setForm] = useState({ userId: '', password: '' });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
@@ -57,17 +57,6 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const cfg = roleConfigs[selectedRole] || roleConfigs.ADMIN;
-
-  useEffect(() => {
-    // Check if user returned from a Google OAuth redirect
-    if (cfg.showGoogle) {
-      checkGoogleRedirectResult().then((googleUser) => {
-        if (googleUser) {
-          loginWithGoogle(googleUser);
-        }
-      }).catch(() => {});
-    }
-  }, [cfg.showGoogle]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

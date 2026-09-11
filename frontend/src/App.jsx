@@ -83,7 +83,7 @@ function AuthenticatedApp() {
 }
 
 function OnboardingGate() {
-  const { user } = useAuth();
+  const { user, loading, isAuthenticating } = useAuth();
 
   const [step, setStep] = useState(() => {
     if (user) return STEP_APP;
@@ -94,14 +94,36 @@ function OnboardingGate() {
   const [selectedRole, setSelectedRole] = useState('ADMIN');
 
   useEffect(() => {
-    if (user && step !== STEP_APP) {
+    if (user) {
       sessionStorage.setItem('finova_onboarding_done', 'true');
       localStorage.setItem('finova_onboarding_done', 'true');
       setStep(STEP_APP);
-    } else if (!user && step === STEP_APP) {
+    } else if (!isAuthenticating && !loading && step === STEP_APP) {
       setStep(STEP_ROLE);
     }
-  }, [user, step]);
+  }, [user, isAuthenticating, loading, step]);
+
+  if (isAuthenticating) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f8fafc',
+        gap: 16
+      }}>
+        <div className="spinner" style={{ width: 44, height: 44 }} />
+        <p style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', margin: 0 }}>
+          Connecting your Google Account...
+        </p>
+        <span style={{ fontSize: 12.5, color: '#64748b' }}>
+          Opening your dashboard securely
+        </span>
+      </div>
+    );
+  }
 
   return (
     <>

@@ -447,7 +447,7 @@ router.get('/agent', authenticate, authorize('ADMIN', 'AGENT'), async (req, res)
 });
 
 // GET /api/dashboard/data-summary — Returns counts of all data this admin owns (for delete confirmation UI)
-router.get('/data-summary', authenticate, authorize('ADMIN'), async (req, res) => {
+router.get('/data-summary', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), async (req, res) => {
   try {
     const customerFilter = getCustomerFilter(req.user);
     const loanFilter = getLoanFilter(req.user);
@@ -466,12 +466,11 @@ router.get('/data-summary', authenticate, authorize('ADMIN'), async (req, res) =
         : Promise.resolve(0),
       loanIds.length > 0
         ? prisma.payment.count({
-            where: {
-              repayment: { loanId: { in: loanIds } }
-            }
+            where: { repayment: { loanId: { in: loanIds } } }
           })
         : Promise.resolve(0),
-      prisma.auditLog.count({ where: { adminId: req.user.adminId || req.user.id } }),
+      // AuditLog uses userId (the acting user), not adminId
+      prisma.auditLog.count({ where: { userId: req.user.id } }),
     ]);
 
     res.json({

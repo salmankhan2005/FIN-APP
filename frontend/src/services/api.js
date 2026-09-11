@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const PROD_API_URL = 'https://finance-app-awae.onrender.com/api';
+const PROD_API_URL = 'https://finance-app-841v.onrender.com/api';
 const DEV_API_URL = 'http://localhost:5000/api';
 
 const isProduction = typeof window !== 'undefined' && 

@@ -1,244 +1,256 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-/* ─── 2D SVG Illustrations ─── */
+/* ─── Finova App-Themed 2D UI Mockups (Matching Application Design System) ─── */
 
-const IllustrationFinance = ({ active }) => (
-  <svg viewBox="0 0 320 260" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+/**
+ * Slide 1: Smart Micro-Lending & Loan Contract UI
+ */
+const IllustrationFinance = () => (
+  <svg viewBox="0 0 320 250" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
     <defs>
-      <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#EEF2FF" />
-        <stop offset="100%" stopColor="#E0F2FE" />
-      </linearGradient>
-      <linearGradient id="card1" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#2563EB" />
-        <stop offset="100%" stopColor="#7C3AED" />
-      </linearGradient>
-      <linearGradient id="green1" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#10B981" />
-        <stop offset="100%" stopColor="#059669" />
-      </linearGradient>
-    </defs>
-
-    {/* Background blob */}
-    <ellipse cx="160" cy="130" rx="150" ry="120" fill="url(#bg1)" />
-
-    {/* Main card */}
-    <rect x="40" y="60" width="220" height="130" rx="18" fill="url(#card1)" style={{ filter: 'drop-shadow(0 8px 24px rgba(37,99,235,0.35))' }} />
-    <rect x="40" y="60" width="220" height="130" rx="18" fill="url(#card1)" />
-
-    {/* Card shine */}
-    <ellipse cx="90" cy="80" rx="50" ry="18" fill="rgba(255,255,255,0.12)" />
-
-    {/* Card chip */}
-    <rect x="58" y="90" width="24" height="18" rx="4" fill="#F59E0B" />
-    <rect x="62" y="94" width="8" height="3" rx="1" fill="rgba(0,0,0,0.2)" />
-    <rect x="62" y="99" width="8" height="3" rx="1" fill="rgba(0,0,0,0.2)" />
-
-    {/* Card text */}
-    <rect x="58" y="118" width="80" height="6" rx="3" fill="rgba(255,255,255,0.5)" />
-    <rect x="58" y="132" width="50" height="5" rx="2.5" fill="rgba(255,255,255,0.35)" />
-    <rect x="178" y="132" width="64" height="5" rx="2.5" fill="rgba(255,255,255,0.35)" />
-    <rect x="58" y="148" width="110" height="7" rx="3.5" fill="rgba(255,255,255,0.7)" />
-
-    {/* Floating balance pill */}
-    <rect x="190" y="45" width="100" height="36" rx="18" fill="white" style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.12))' }} />
-    <circle cx="210" cy="63" r="10" fill="#EEF2FF" />
-    <text x="210" y="67" textAnchor="middle" fontSize="11" fill="#2563EB" fontWeight="700">₹</text>
-    <rect x="224" y="56" width="56" height="5" rx="2.5" fill="#1E293B" />
-    <rect x="224" y="65" width="38" height="4" rx="2" fill="#94A3B8" />
-
-    {/* Floating stats card */}
-    <rect x="20" y="160" width="110" height="52" rx="14" fill="white" style={{ filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.10))' }} />
-    <circle cx="40" cy="176" r="10" fill="#ECFDF5" />
-    <text x="40" y="180" textAnchor="middle" fontSize="11" fill="#10B981">↑</text>
-    <rect x="54" y="170" width="62" height="5" rx="2.5" fill="#1E293B" />
-    <rect x="54" y="179" width="42" height="4" rx="2" fill="#94A3B8" />
-    <rect x="29" y="192" width="82" height="8" rx="4" fill="#ECFDF5" />
-    <rect x="29" y="192" width="58" height="8" rx="4" fill="url(#green1)" />
-
-    {/* Floating graph card */}
-    <rect x="190" y="160" width="110" height="52" rx="14" fill="white" style={{ filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.10))' }} />
-    <text x="208" y="175" fontSize="9" fill="#94A3B8" fontWeight="600">COLLECTIONS</text>
-    {/* Mini bar chart */}
-    {[18, 30, 22, 36, 28, 40].map((h, i) => (
-      <rect key={i} x={200 + i * 14} y={212 - h} width="9" height={h} rx="3"
-        fill={i === 5 ? '#2563EB' : '#E0E7FF'} />
-    ))}
-
-    {/* Animated coin */}
-    <circle cx="160" cy="230" r="14" fill="#FEF3C7" style={{ filter: 'drop-shadow(0 2px 8px rgba(245,158,11,0.3))' }} />
-    <text x="160" y="235" textAnchor="middle" fontSize="13" fill="#F59E0B" fontWeight="800">₹</text>
-
-    {/* Decorative dots */}
-    <circle cx="30" cy="55" r="5" fill="#BFDBFE" opacity="0.8" />
-    <circle cx="285" cy="55" r="7" fill="#DDD6FE" opacity="0.7" />
-    <circle cx="295" cy="200" r="4" fill="#A7F3D0" opacity="0.8" />
-  </svg>
-);
-
-const IllustrationGrowth = ({ active }) => (
-  <svg viewBox="0 0 320 260" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-    <defs>
-      <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#F0FDF4" />
-        <stop offset="100%" stopColor="#ECFEFF" />
-      </linearGradient>
-      <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#10B981" stopOpacity="0.3" />
-        <stop offset="100%" stopColor="#10B981" stopOpacity="0" />
-      </linearGradient>
-      <linearGradient id="goalBar" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stopColor="#2563EB" />
-        <stop offset="100%" stopColor="#7C3AED" />
-      </linearGradient>
-    </defs>
-
-    <ellipse cx="160" cy="130" rx="145" ry="115" fill="url(#bg2)" />
-
-    {/* Main chart card */}
-    <rect x="30" y="50" width="260" height="130" rx="18" fill="white" style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.08))' }} />
-    <text x="50" y="75" fontSize="10" fill="#94A3B8" fontWeight="600">DAILY COLLECTION</text>
-    <text x="50" y="92" fontSize="18" fill="#0F172A" fontWeight="800">₹2,46,500</text>
-    <rect x="196" y="76" width="52" height="20" rx="10" fill="#ECFDF5" />
-    <text x="222" y="90" textAnchor="middle" fontSize="10" fill="#10B981" fontWeight="700">+12.4%</text>
-
-    {/* Chart area */}
-    <path d="M50 160 L80 145 L110 148 L140 130 L170 120 L200 108 L230 95 L260 85 L260 170 L50 170 Z"
-      fill="url(#chartFill)" />
-    <path d="M50 160 L80 145 L110 148 L140 130 L170 120 L200 108 L230 95 L260 85"
-      stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-
-    {/* Chart dots */}
-    {[[50,160],[110,148],[170,120],[230,95],[260,85]].map(([cx,cy],i) => (
-      <circle key={i} cx={cx} cy={cy} r={i===4?5:3.5}
-        fill={i===4?'#10B981':'white'} stroke="#10B981" strokeWidth="2" />
-    ))}
-
-    {/* Tooltip */}
-    <rect x="226" y="68" width="56" height="28" rx="8" fill="#0F172A" />
-    <polygon points="254,96 250,104 258,104" fill="#0F172A" />
-    <text x="254" y="80" textAnchor="middle" fontSize="8" fill="#94A3B8">Today</text>
-    <text x="254" y="91" textAnchor="middle" fontSize="9" fill="white" fontWeight="700">₹8,400</text>
-
-    {/* Goal progress card */}
-    <rect x="30" y="192" width="170" height="52" rx="14" fill="white" style={{ filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.08))' }} />
-    <text x="46" y="210" fontSize="9" fill="#94A3B8" fontWeight="600">DAILY GOAL</text>
-    <text x="46" y="224" fontSize="13" fill="#0F172A" fontWeight="700">₹10,000</text>
-    <rect x="46" y="230" width="138" height="6" rx="3" fill="#E2E8F0" />
-    <rect x="46" y="230" width="95" height="6" rx="3" fill="url(#goalBar)" />
-    <text x="184" y="236" fontSize="8" fill="#2563EB" fontWeight="700" textAnchor="end">82%</text>
-
-    {/* Floating badge */}
-    <rect x="212" y="192" width="84" height="52" rx="14" fill="white" style={{ filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.08))' }} />
-    <circle cx="254" cy="212" r="12" fill="#EEF2FF" />
-    <text x="254" y="216" textAnchor="middle" fontSize="14" fill="#2563EB">🎯</text>
-    <text x="254" y="232" textAnchor="middle" fontSize="8" fill="#94A3B8">Target</text>
-    <text x="254" y="242" textAnchor="middle" fontSize="10" fill="#0F172A" fontWeight="700">On Track</text>
-
-    {/* Decorative */}
-    <circle cx="22" cy="140" r="6" fill="#BBF7D0" opacity="0.8" />
-    <circle cx="298" cy="100" r="5" fill="#BFDBFE" opacity="0.8" />
-    <circle cx="25" cy="50" r="4" fill="#FDE68A" opacity="0.8" />
-  </svg>
-);
-
-const IllustrationReports = ({ active }) => (
-  <svg viewBox="0 0 320 260" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-    <defs>
-      <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#FDF4FF" />
-        <stop offset="100%" stopColor="#FFF7ED" />
-      </linearGradient>
-      <linearGradient id="pie1" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#7C3AED" />
+      <linearGradient id="finCardGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#1E40AF" />
         <stop offset="100%" stopColor="#2563EB" />
       </linearGradient>
+      <linearGradient id="finBgGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#EFF6FF" />
+        <stop offset="100%" stopColor="#DBEAFE" />
+      </linearGradient>
     </defs>
 
-    <ellipse cx="160" cy="130" rx="145" ry="115" fill="url(#bg3)" />
+    {/* Soft backdrop */}
+    <rect x="15" y="10" width="290" height="230" rx="24" fill="url(#finBgGrad)" opacity="0.6" />
 
-    {/* Passbook card */}
-    <rect x="28" y="45" width="170" height="145" rx="18" fill="white" style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.09))' }} />
-    <rect x="28" y="45" width="170" height="44" rx="18" fill="#7C3AED" />
-    <rect x="28" y="67" width="170" height="22" fill="#7C3AED" />
-    <text x="50" y="62" fontSize="9" fill="rgba(255,255,255,0.7)" fontWeight="600">PASSBOOK</text>
-    <text x="50" y="77" fontSize="13" fill="white" fontWeight="800">₹1,24,000</text>
-    <text x="166" y="77" fontSize="10" fill="#DDD6FE" textAnchor="end">Collected</text>
+    {/* Main Finova Loan Card */}
+    <rect x="30" y="32" width="260" height="135" rx="18" fill="url(#finCardGrad)" style={{ filter: 'drop-shadow(0 10px 25px rgba(37,99,235,0.35))' }} />
 
-    {/* Passbook rows */}
-    {[
-      ['Rajan Kumar', '+₹2,000', '#10B981'],
-      ['Meena Devi', '+₹1,500', '#10B981'],
-      ['Suresh P.', '+₹3,200', '#10B981'],
-      ['Pending x3', '-₹900', '#EF4444'],
-    ].map(([name, amt, color], i) => (
-      <g key={i}>
-        <rect x="36" y={102 + i * 20} width="152" height="16" rx="6"
-          fill={i % 2 === 0 ? '#FAFAFA' : 'white'} />
-        <circle cx="46" cy={110 + i * 20} r="5" fill={color + '22'} />
-        <text x="55" y={113 + i * 20} fontSize="8.5" fill="#334155" fontWeight="500">{name}</text>
-        <text x="180" y={113 + i * 20} textAnchor="end" fontSize="8.5" fill={color} fontWeight="700">{amt}</text>
-      </g>
-    ))}
+    {/* Card Header */}
+    <circle cx="56" cy="58" r="14" fill="rgba(255,255,255,0.2)" />
+    <text x="56" y="63" textAnchor="middle" fontSize="14" fill="#FFFFFF" fontWeight="800">₹</text>
+    <text x="78" y="55" fontSize="11" fill="rgba(255,255,255,0.75)" fontWeight="600">ACTIVE LOAN CONTRACT</text>
+    <text x="78" y="68" fontSize="13" fill="#FFFFFF" fontWeight="800" letterSpacing="0.5">LN-2026-0042</text>
 
-    {/* Donut chart card */}
-    <rect x="210" y="45" width="100" height="100" rx="16" fill="white" style={{ filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.09))' }} />
-    <text x="260" y="63" textAnchor="middle" fontSize="8.5" fill="#94A3B8" fontWeight="600">LOANS</text>
+    {/* Status badge on card */}
+    <rect x="222" y="48" width="54" height="20" rx="10" fill="rgba(16,185,129,0.25)" stroke="#34D399" strokeWidth="1" />
+    <text x="249" y="62" textAnchor="middle" fontSize="9.5" fill="#A7F3D0" fontWeight="700">● ACTIVE</text>
 
-    {/* Simple pie/donut */}
-    <circle cx="260" cy="105" r="28" fill="none" stroke="#E2E8F0" strokeWidth="10" />
-    <circle cx="260" cy="105" r="28" fill="none" stroke="#7C3AED" strokeWidth="10"
-      strokeDasharray="105 70" strokeDashoffset="17" strokeLinecap="round" />
-    <circle cx="260" cy="105" r="28" fill="none" stroke="#10B981" strokeWidth="10"
-      strokeDasharray="45 130" strokeDashoffset="-88" strokeLinecap="round" />
-    <circle cx="260" cy="105" r="28" fill="none" stroke="#F59E0B" strokeWidth="10"
-      strokeDasharray="25 150" strokeDashoffset="-133" strokeLinecap="round" />
-    <text x="260" y="109" textAnchor="middle" fontSize="11" fill="#0F172A" fontWeight="800">84%</text>
+    {/* Card Balance & Stats */}
+    <text x="52" y="105" fontSize="10" fill="rgba(255,255,255,0.7)" fontWeight="500">Principal Disbursed</text>
+    <text x="52" y="126" fontSize="20" fill="#FFFFFF" fontWeight="800">₹25,000</text>
 
-    {/* Legend */}
-    <rect x="210" y="152" width="8" height="8" rx="2" fill="#7C3AED" />
-    <text x="222" y="160" fontSize="8" fill="#64748B">Active</text>
-    <rect x="210" y="163" width="8" height="8" rx="2" fill="#10B981" />
-    <text x="222" y="171" fontSize="8" fill="#64748B">Closed</text>
+    <text x="185" y="105" fontSize="10" fill="rgba(255,255,255,0.7)" fontWeight="500">Weekly EMI</text>
+    <text x="185" y="126" fontSize="16" fill="#FDE047" fontWeight="800">₹1,250</text>
 
-    {/* Bottom receipt card */}
-    <rect x="28" y="200" width="282" height="44" rx="14" fill="white" style={{ filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.08))' }} />
-    <circle cx="52" cy="222" r="12" fill="#EDE9FE" />
-    <text x="52" y="226" textAnchor="middle" fontSize="13">🧾</text>
-    <text x="72" y="218" fontSize="10" fill="#0F172A" fontWeight="700">Instant Receipt Generated</text>
-    <text x="72" y="231" fontSize="8.5" fill="#94A3B8">Loan #LN-2024-0087 · ₹2,000 collected</text>
-    <rect x="268" y="212" width="30" height="20" rx="10" fill="#ECFDF5" />
-    <text x="283" y="225" textAnchor="middle" fontSize="9" fill="#10B981" fontWeight="700">✓ OK</text>
+    {/* Card shine line */}
+    <line x1="52" y1="145" x2="268" y2="145" stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4 4" />
+    <text x="52" y="156" fontSize="8.5" fill="rgba(255,255,255,0.6)">Interest: 2.0% Flat  •  Tenure: 20 Weeks</text>
 
-    {/* Decorative */}
-    <circle cx="300" cy="50" r="6" fill="#FDE68A" opacity="0.8" />
-    <circle cx="22" cy="200" r="5" fill="#DDD6FE" opacity="0.8" />
+    {/* Floating Interest Recalculation Badge */}
+    <g style={{ filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.08))' }}>
+      <rect x="38" y="180" width="135" height="48" rx="14" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1" />
+      <circle cx="58" cy="204" r="12" fill="#ECFDF5" />
+      <text x="58" y="209" textAnchor="middle" fontSize="12" fill="#059669">⚡</text>
+      <text x="76" y="198" fontSize="8.5" fill="#64748B" fontWeight="600">PARTIAL PAYMENT</text>
+      <text x="76" y="212" fontSize="11" fill="#0F172A" fontWeight="800">Auto Interest Drop</text>
+    </g>
+
+    {/* Floating Recovery Badge */}
+    <g style={{ filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.08))' }}>
+      <rect x="185" y="180" width="105" height="48" rx="14" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1" />
+      <text x="198" y="198" fontSize="8.5" fill="#64748B" fontWeight="600">RECOVERY RATE</text>
+      <text x="198" y="214" fontSize="14" fill="#2563EB" fontWeight="800">98.5%</text>
+      <rect x="198" y="218" width="78" height="4" rx="2" fill="#EFF6FF" />
+      <rect x="198" y="218" width="68" height="4" rx="2" fill="#2563EB" />
+    </g>
   </svg>
 );
 
-/* ─── Slide data ─── */
+/**
+ * Slide 2: Field Agent Collections & Route Tracking
+ */
+const IllustrationGrowth = () => (
+  <svg viewBox="0 0 320 250" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+    <defs>
+      <linearGradient id="agentCardGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#065F46" />
+        <stop offset="100%" stopColor="#059669" />
+      </linearGradient>
+      <linearGradient id="agentBgGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#F0FDF4" />
+        <stop offset="100%" stopColor="#DCFCE7" />
+      </linearGradient>
+    </defs>
+
+    {/* Soft backdrop */}
+    <rect x="15" y="10" width="290" height="230" rx="24" fill="url(#agentBgGrad)" opacity="0.6" />
+
+    {/* Daily Collection Metric Card */}
+    <rect x="30" y="28" width="260" height="120" rx="18" fill="url(#agentCardGrad)" style={{ filter: 'drop-shadow(0 10px 25px rgba(5,150,105,0.3))' }} />
+
+    {/* Header */}
+    <text x="50" y="52" fontSize="10" fill="#A7F3D0" fontWeight="600" letterSpacing="0.5">TODAY'S FIELD COLLECTION</text>
+    <text x="50" y="78" fontSize="22" fill="#FFFFFF" fontWeight="800">₹48,500</text>
+    <rect x="198" y="40" width="74" height="22" rx="11" fill="rgba(255,255,255,0.18)" />
+    <text x="235" y="55" textAnchor="middle" fontSize="10" fill="#FFFFFF" fontWeight="700">✓ 38 Paid</text>
+
+    {/* Progress Bar */}
+    <text x="50" y="102" fontSize="9" fill="#D1FAE5">Target: ₹50,000 (97% Completed)</text>
+    <rect x="50" y="110" width="220" height="8" rx="4" fill="rgba(0,0,0,0.2)" />
+    <rect x="50" y="110" width="205" height="8" rx="4" fill="#34D399" />
+
+    {/* Route & Map Collection Entry */}
+    <g style={{ filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.08))' }}>
+      <rect x="30" y="160" width="260" height="68" rx="16" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1" />
+      {/* Route Icon */}
+      <circle cx="54" cy="194" r="16" fill="#EFF6FF" />
+      <text x="54" y="200" textAnchor="middle" fontSize="16">🏍️</text>
+
+      {/* Details */}
+      <text x="78" y="186" fontSize="11" fill="#0F172A" fontWeight="700">Ward 4 - Gandhi Nagar Route</text>
+      <text x="78" y="200" fontSize="9" fill="#64748B">Agent: Murugan S. • GPS Tracked</text>
+      <text x="78" y="214" fontSize="9" fill="#059669" fontWeight="700">● 14 Nearby Dues Pending</text>
+
+      {/* Action Button tag */}
+      <rect x="224" y="180" width="54" height="26" rx="8" fill="#2563EB" />
+      <text x="251" y="197" textAnchor="middle" fontSize="10" fill="#FFFFFF" fontWeight="700">Map 📍</text>
+    </g>
+  </svg>
+);
+
+/**
+ * Slide 3: Guarantor (Jamin) KYC & Aadhaar Verification
+ */
+const IllustrationKYC = () => (
+  <svg viewBox="0 0 320 250" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+    <defs>
+      <linearGradient id="kycCardGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#1E3A8A" />
+        <stop offset="100%" stopColor="#3B82F6" />
+      </linearGradient>
+      <linearGradient id="kycBgGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#F8FAFC" />
+        <stop offset="100%" stopColor="#E2E8F0" />
+      </linearGradient>
+    </defs>
+
+    <rect x="15" y="10" width="290" height="230" rx="24" fill="url(#kycBgGrad)" opacity="0.6" />
+
+    {/* Customer KYC Profile Card */}
+    <rect x="30" y="28" width="260" height="110" rx="18" fill="url(#kycCardGrad)" style={{ filter: 'drop-shadow(0 10px 25px rgba(30,58,138,0.3))' }} />
+
+    {/* Avatar */}
+    <circle cx="58" cy="62" r="18" fill="#DBEAFE" />
+    <text x="58" y="68" textAnchor="middle" fontSize="18">👤</text>
+
+    {/* Name and Phone */}
+    <text x="86" y="55" fontSize="13" fill="#FFFFFF" fontWeight="800">R. Salman Khan</text>
+    <text x="86" y="70" fontSize="10" fill="#BFDBFE">+91 93422 98949  •  Salem</text>
+
+    {/* Verified badge */}
+    <rect x="86" y="80" width="80" height="18" rx="6" fill="rgba(16,185,129,0.25)" />
+    <text x="126" y="93" textAnchor="middle" fontSize="9" fill="#6EE7B7" fontWeight="700">✓ Aadhaar Verified</text>
+
+    <rect x="174" y="80" width="70" height="18" rx="6" fill="rgba(255,255,255,0.15)" />
+    <text x="209" y="93" textAnchor="middle" fontSize="9" fill="#FFFFFF" fontWeight="600">GPS Pinned 📍</text>
+
+    {/* Jamin (Guarantor) Card Highlight */}
+    <g style={{ filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.08))' }}>
+      <rect x="30" y="148" width="260" height="80" rx="16" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1" />
+      
+      {/* Jamin Header */}
+      <rect x="42" y="158" width="85" height="18" rx="6" fill="#FEF3C7" />
+      <text x="84" y="171" textAnchor="middle" fontSize="9" fill="#B45309" fontWeight="800">🤝 GUARANTOR (ஜாமீன்)</text>
+
+      <text x="42" y="194" fontSize="11" fill="#0F172A" fontWeight="700">K. Thouhith (Brother)</text>
+      <text x="42" y="208" fontSize="9" fill="#64748B">Ph: 98421 XXXXX  •  Aadhaar: XXXX-8942</text>
+      <text x="42" y="220" fontSize="8.5" fill="#059669" fontWeight="600">✓ Photo &amp; Digital Signature Uploaded</text>
+
+      <circle cx="260" cy="188" r="16" fill="#ECFDF5" />
+      <text x="260" y="193" textAnchor="middle" fontSize="14" fill="#059669">🛡️</text>
+    </g>
+  </svg>
+);
+
+/**
+ * Slide 4: Digital Passbook & Excel Data Extraction
+ */
+const IllustrationReports = () => (
+  <svg viewBox="0 0 320 250" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+    <defs>
+      <linearGradient id="repCardGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#0F172A" />
+        <stop offset="100%" stopColor="#1E293B" />
+      </linearGradient>
+      <linearGradient id="repBgGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#F8FAFC" />
+        <stop offset="100%" stopColor="#F1F5F9" />
+      </linearGradient>
+    </defs>
+
+    <rect x="15" y="10" width="290" height="230" rx="24" fill="url(#repBgGrad)" opacity="0.6" />
+
+    {/* Digital Passbook Receipt */}
+    <rect x="30" y="26" width="260" height="116" rx="18" fill="url(#repCardGrad)" style={{ filter: 'drop-shadow(0 10px 25px rgba(15,23,42,0.35))' }} />
+
+    <text x="50" y="48" fontSize="9" fill="#94A3B8" fontWeight="600" letterSpacing="0.5">INSTANT PAYMENT RECEIPT</text>
+    <rect x="218" y="38" width="58" height="20" rx="10" fill="#059669" />
+    <text x="247" y="52" textAnchor="middle" fontSize="9" fill="#FFFFFF" fontWeight="700">✓ CASH</text>
+
+    <text x="50" y="74" fontSize="18" fill="#34D399" fontWeight="800">₹2,000 RECEIVED</text>
+    <text x="50" y="90" fontSize="9.5" fill="#E2E8F0">Loan #LN-0001 • Week 12 of 20</text>
+    <text x="50" y="104" fontSize="8.5" fill="#94A3B8">Remaining Outstanding: ₹8,000</text>
+    <text x="50" y="118" fontSize="8" fill="#64748B">Collected by Admin • Today 01:15 PM</text>
+
+    {/* Excel Extraction Card Feature */}
+    <g style={{ filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.08))' }}>
+      <rect x="30" y="152" width="260" height="74" rx="16" fill="#FFFFFF" stroke="#10B981" strokeWidth="1.5" />
+      
+      <circle cx="54" cy="189" r="16" fill="#ECFDF5" />
+      <text x="54" y="195" textAnchor="middle" fontSize="16">📊</text>
+
+      <text x="78" y="176" fontSize="11" fill="#065F46" fontWeight="800">1-Click Full Excel (.xlsx) Extract</text>
+      <text x="78" y="191" fontSize="9" fill="#64748B">Customers • Loans • Schedules • Collections</text>
+      <text x="78" y="206" fontSize="8.5" fill="#059669" fontWeight="700">Color-Coded Headers &amp; Status Badges</text>
+
+      <rect x="232" y="174" width="46" height="26" rx="8" fill="#059669" />
+      <text x="255" y="191" textAnchor="middle" fontSize="9.5" fill="#FFFFFF" fontWeight="700">.XLSX</text>
+    </g>
+  </svg>
+);
+
+/* ─── Slide Definitions strictly matching Application Features & Colors ─── */
 const slides = [
   {
-    title: 'Smart Financial\nManagement',
-    desc: 'Effortlessly manage loans, monitor collections, and keep complete control of your finances in one secure place.',
-    gradient: ['#2563EB', '#7C3AED'],
+    title: 'Smart Micro-Lending\n& Adaptive Loans',
+    desc: 'Effortlessly create daily & weekly loans with automatic interest recalculation and instant balance tracking.',
+    gradient: ['#2563EB', '#1D4ED8'],
     Illustration: IllustrationFinance,
+    badge: 'LOAN MANAGEMENT',
   },
   {
-    title: 'Track Growth &\nSet Daily Goals',
-    desc: 'Monitor collection targets, track real-time cash flow, and hit your financial milestones every single day.',
-    gradient: ['#059669', '#2563EB'],
+    title: 'Field Collection &\nReal-Time GPS Route',
+    desc: 'Empower agents with interactive map routes, instant door-to-door cash/UPI receipts, and live daily targets.',
+    gradient: ['#059669', '#047857'],
     Illustration: IllustrationGrowth,
+    badge: 'FIELD COLLECTIONS',
   },
   {
-    title: 'Instant Passbook\n& Smart Reports',
-    desc: 'Get real-time payment receipts, clear interest breakdowns, and automated collection route tracking on the go.',
-    gradient: ['#7C3AED', '#DB2777'],
+    title: 'Guarantor (Jamin) KYC\n& ID Verification',
+    desc: 'Protect every loan with complete guarantor (ஜாமீன்) records, Aadhaar photo uploads, and location pinning.',
+    gradient: ['#1E40AF', '#2563EB'],
+    Illustration: IllustrationKYC,
+    badge: 'GUARANTOR & KYC',
+  },
+  {
+    title: 'Digital Passbook &\nExcel Sheet Extracts',
+    desc: 'Generate instant payment receipts, customer passbooks, and export color-coded Excel backups with 1 click.',
+    gradient: ['#0F172A', '#1E293B'],
     Illustration: IllustrationReports,
+    badge: 'DATA EXPORTS & REPORTS',
   },
 ];
 
-const AUTO_INTERVAL = 4000;
+const AUTO_INTERVAL = 4500;
 
 export default function OnboardingSlides({ onFinish }) {
   const [current, setCurrent] = useState(0);
@@ -253,12 +265,12 @@ export default function OnboardingSlides({ onFinish }) {
     setCurrent(idx);
   };
 
-  /* Auto-advance */
+  /* Auto-advance timer */
   const resetAutoTimer = () => {
     clearInterval(autoRef.current);
     if (!paused) {
       autoRef.current = setInterval(() => {
-        setCurrent(prev => {
+        setCurrent((prev) => {
           if (prev < slides.length - 1) return prev + 1;
           clearInterval(autoRef.current);
           return prev;
@@ -315,7 +327,7 @@ export default function OnboardingSlides({ onFinish }) {
         position: 'fixed', inset: 0, zIndex: 9998,
         background: '#f8fafc',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         overflow: 'hidden', height: '100dvh', width: '100vw',
       }}
       onTouchStart={handleTouchStart}
@@ -324,86 +336,57 @@ export default function OnboardingSlides({ onFinish }) {
     >
       <style>{`
         @keyframes ob-fadeUp {
-          from { opacity: 0; transform: translateY(14px); }
+          from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes ob-float {
           0%, 100% { transform: translateY(0px); }
-          50%       { transform: translateY(-10px); }
-        }
-        @keyframes ob-spin-slow {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-        @keyframes ob-pulse-ring {
-          0%   { transform: scale(0.9); opacity: 0.7; }
-          70%  { transform: scale(1.25); opacity: 0; }
-          100% { transform: scale(1.25); opacity: 0; }
-        }
-        @keyframes ob-shimmer {
-          0%   { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
-        .ob-dot-active {
-          width: 28px !important;
-          background: var(--ob-c1) !important;
+          50%       { transform: translateY(-6px); }
         }
         .ob-btn:hover {
           filter: brightness(1.08);
-          transform: translateY(-1px) scale(1.01);
+          transform: translateY(-1px);
         }
         .ob-btn:active {
-          transform: scale(0.97);
+          transform: scale(0.98);
         }
       `}</style>
 
-      {/* Mobile-constrained container */}
+      {/* Mobile container matching App Layout */}
       <div
         style={{
           width: '100%', maxWidth: 430, height: '100%',
           background: '#ffffff',
           display: 'flex', flexDirection: 'column',
           justifyContent: 'space-between',
-          padding: '16px 24px 20px',
+          padding: '16px 20px 20px',
           boxSizing: 'border-box',
           position: 'relative',
           overflow: 'hidden',
-          boxShadow: '0 0 60px rgba(0,0,0,0.07)',
-          '--ob-c1': c1,
-          '--ob-c2': c2,
+          boxShadow: '0 0 50px rgba(0,0,0,0.06)',
+          borderLeft: '1px solid rgba(0,0,0,0.05)',
+          borderRight: '1px solid rgba(0,0,0,0.05)',
         }}
       >
-
-        {/* Animated gradient blob background */}
-        <div
-          style={{
-            position: 'absolute', top: -80, left: '50%',
-            transform: 'translateX(-50%)',
-            width: 340, height: 340,
-            borderRadius: '50%',
-            background: `radial-gradient(circle at 40% 40%, ${c1}22, ${c2}18, transparent 70%)`,
-            transition: 'background 0.6s ease',
-            pointerEvents: 'none', zIndex: 0,
-          }}
-        />
-
-        {/* Top: Skip */}
+        {/* Top App Header */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          height: 40, flexShrink: 0, zIndex: 10, position: 'relative',
+          height: 42, flexShrink: 0, zIndex: 10,
         }}>
-          {/* Logo mark */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Logo brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: `linear-gradient(135deg, ${c1}, ${c2})`,
+              width: 32, height: 32, borderRadius: 10,
+              background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'background 0.5s ease',
-              boxShadow: `0 3px 10px ${c1}44`,
+              boxShadow: '0 3px 10px rgba(37,99,235,0.3)',
             }}>
-              <span style={{ fontSize: 14, color: 'white', fontWeight: 800 }}>₹</span>
+              <span style={{ fontSize: 16, color: 'white', fontWeight: 800 }}>₹</span>
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>FinanceApp</span>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', lineHeight: 1.1 }}>Finova</div>
+              <div style={{ fontSize: 9.5, color: '#64748B', fontWeight: 500 }}>Smart Micro-Finance</div>
+            </div>
           </div>
 
           {!isLast ? (
@@ -411,27 +394,34 @@ export default function OnboardingSlides({ onFinish }) {
               onClick={onFinish}
               style={{
                 background: '#F1F5F9', border: 'none',
-                borderRadius: 20, padding: '7px 18px',
-                fontSize: 13, fontWeight: 600, color: '#64748B',
-                cursor: 'pointer', transition: 'all 0.15s ease',
+                borderRadius: 20, padding: '6px 16px',
+                fontSize: 12.5, fontWeight: 600, color: '#64748B',
+                cursor: 'pointer', transition: 'background 0.15s ease',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#E2E8F0'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#F1F5F9'; }}
             >
               Skip
             </button>
-          ) : <div style={{ height: 32 }} />}
+          ) : (
+            <div style={{
+              fontSize: 11, fontWeight: 700, color: '#10B981',
+              background: '#ECFDF5', padding: '4px 10px', borderRadius: 12,
+            }}>
+              Ready
+            </div>
+          )}
         </div>
 
         {/* Carousel Viewport */}
         <div style={{
           flex: '1 1 auto',
           minHeight: 0,
-          maxHeight: '52vh',
+          maxHeight: '50vh',
           position: 'relative',
           overflow: 'hidden',
           width: '100%',
           zIndex: 2,
+          display: 'flex',
+          alignItems: 'center',
         }}>
           {/* Sliding track */}
           <div
@@ -442,7 +432,7 @@ export default function OnboardingSlides({ onFinish }) {
               transform: isDragging
                 ? `translateX(calc(-${current * (100 / slides.length)}% + ${dragOffset}px))`
                 : `translateX(-${current * (100 / slides.length)}%)`,
-              transition: isDragging ? 'none' : 'transform 0.52s cubic-bezier(0.16, 1, 0.3, 1)',
+              transition: isDragging ? 'none' : 'transform 0.48s cubic-bezier(0.16, 1, 0.3, 1)',
               willChange: 'transform',
             }}
           >
@@ -460,58 +450,25 @@ export default function OnboardingSlides({ onFinish }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     position: 'relative',
-                    padding: '0 8px',
+                    padding: '0 4px',
                     boxSizing: 'border-box',
                   }}
                 >
-                  {/* Ambient glow behind illustration */}
                   <div style={{
-                    position: 'absolute',
-                    width: 220, height: 220,
-                    borderRadius: '50%',
-                    background: `radial-gradient(circle, ${s.gradient[0]}18 0%, transparent 70%)`,
-                    animation: isActive ? 'ob-pulse-ring 3.5s ease-in-out infinite' : 'none',
-                    pointerEvents: 'none',
-                    top: '50%', left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 0,
-                  }} />
-
-                  {/* Floating 2D illustration */}
-                  <div style={{
-                    width: '90%',
-                    maxWidth: 300,
-                    animation: isActive ? 'ob-float 4s ease-in-out infinite' : 'none',
+                    width: '100%',
+                    maxWidth: 310,
+                    animation: isActive ? 'ob-float 3.5s ease-in-out infinite' : 'none',
                     zIndex: 2,
-                    position: 'relative',
                   }}>
-                    <Illus active={isActive} />
+                    <Illus />
                   </div>
-
-                  {/* Decorative corner dots — only on active */}
-                  {isActive && (
-                    <>
-                      <div style={{
-                        position: 'absolute', top: 10, right: 20,
-                        width: 8, height: 8, borderRadius: '50%',
-                        background: s.gradient[0], opacity: 0.5,
-                        animation: 'ob-float 3s ease-in-out infinite',
-                      }} />
-                      <div style={{
-                        position: 'absolute', bottom: 20, left: 16,
-                        width: 6, height: 6, borderRadius: '50%',
-                        background: s.gradient[1], opacity: 0.45,
-                        animation: 'ob-float 3.8s ease-in-out infinite reverse',
-                      }} />
-                    </>
-                  )}
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Bottom area */}
+        {/* Bottom Area */}
         <div style={{
           flexShrink: 0,
           display: 'flex', flexDirection: 'column',
@@ -520,57 +477,51 @@ export default function OnboardingSlides({ onFinish }) {
           zIndex: 5,
         }}>
 
-          {/* Dot indicators */}
+          {/* Dot Indicators */}
           <div style={{
             display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6,
-            marginBottom: 18,
+            marginBottom: 14,
           }}>
-            {slides.map((_, i) => (
+            {slides.map((s, i) => (
               <button
                 key={i}
                 onClick={() => { clearInterval(autoRef.current); goTo(i); setPaused(false); }}
                 aria-label={`Go to slide ${i + 1}`}
                 style={{
-                  width: i === current ? 28 : 8,
-                  height: 8, borderRadius: 4, border: 'none', padding: 0,
-                  background: i === current
-                    ? `linear-gradient(90deg, ${slides[i].gradient[0]}, ${slides[i].gradient[1]})`
-                    : '#E2E8F0',
+                  width: i === current ? 26 : 7,
+                  height: 7, borderRadius: 4, border: 'none', padding: 0,
+                  background: i === current ? '#2563EB' : '#E2E8F0',
                   cursor: 'pointer',
-                  transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                  boxShadow: i === current ? `0 2px 8px ${slides[i].gradient[0]}55` : 'none',
+                  transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
                 }}
               />
             ))}
           </div>
 
-          {/* Auto-progress thin bar */}
-          {!isLast && (
-            <div style={{
-              width: '100%', height: 2, background: '#F1F5F9',
-              borderRadius: 1, marginBottom: 14, overflow: 'hidden',
-            }}>
-              <div
-                key={current}
-                style={{
-                  height: '100%',
-                  width: '100%',
-                  background: `linear-gradient(90deg, ${c1}, ${c2})`,
-                  borderRadius: 1,
-                  transform: 'scaleX(0)',
-                  transformOrigin: 'left',
-                  animation: `ob-shimmer-none ${AUTO_INTERVAL}ms linear forwards`,
-                  animationName: 'progress-bar-fill',
-                }}
-              />
-            </div>
-          )}
+          {/* Feature Badge */}
+          <div
+            key={`badge-${current}`}
+            style={{
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: '0.8px',
+              color: '#2563EB',
+              background: '#EFF6FF',
+              padding: '3px 10px',
+              borderRadius: 6,
+              marginBottom: 8,
+              border: '1px solid #DBEAFE',
+              animation: 'ob-fadeUp 0.3s ease',
+            }}
+          >
+            {slide.badge}
+          </div>
 
-          {/* Text content */}
+          {/* Text Content */}
           <div style={{
             textAlign: 'center',
-            marginBottom: 20,
-            minHeight: 80,
+            marginBottom: 18,
+            minHeight: 84,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
@@ -579,11 +530,11 @@ export default function OnboardingSlides({ onFinish }) {
             <h2
               key={`title-${current}`}
               style={{
-                fontSize: 'clamp(18px, 5vw, 22px)', fontWeight: 800, color: '#0F172A',
-                margin: '0 0 8px 0', lineHeight: 1.25,
+                fontSize: 'clamp(18px, 4.8vw, 21px)', fontWeight: 800, color: '#0F172A',
+                margin: '0 0 6px 0', lineHeight: 1.25,
                 whiteSpace: 'pre-line',
-                letterSpacing: '-0.4px',
-                animation: 'ob-fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                letterSpacing: '-0.3px',
+                animation: 'ob-fadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
               {slide.title}
@@ -591,73 +542,47 @@ export default function OnboardingSlides({ onFinish }) {
             <p
               key={`desc-${current}`}
               style={{
-                fontSize: 'clamp(12px, 3.2vw, 13.5px)', color: '#64748B', lineHeight: 1.55,
+                fontSize: 'clamp(12px, 3.2vw, 13px)', color: '#64748B', lineHeight: 1.5,
                 margin: '0 auto', fontWeight: 400,
-                maxWidth: 295,
-                animation: 'ob-fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+                maxWidth: 300,
+                animation: 'ob-fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
               {slide.desc}
             </p>
           </div>
 
-          {/* CTA Button with gradient */}
+          {/* Primary Action Button (Matching App Primary Buttons) */}
           <button
             className="ob-btn"
             onClick={handleNext}
             style={{
-              width: '100%', height: 50,
-              background: `linear-gradient(135deg, ${c1}, ${c2})`,
+              width: '100%', height: 48,
+              background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)',
               color: '#ffffff', border: 'none',
-              borderRadius: 25,
-              fontSize: 15, fontWeight: 700,
+              borderRadius: 14,
+              fontSize: 14.5, fontWeight: 700,
               cursor: 'pointer',
-              boxShadow: `0 6px 24px ${c1}50`,
-              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+              boxShadow: '0 6px 20px rgba(37,99,235,0.35)',
+              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               letterSpacing: '0.2px',
-              position: 'relative',
-              overflow: 'hidden',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}
           >
-            {/* Shimmer on button */}
-            <span style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
-              animation: 'ob-shimmer 2.5s ease-in-out infinite',
-              borderRadius: 25,
-            }} />
-            <span style={{ position: 'relative', zIndex: 1 }}>
-              {isLast ? '🚀 Get Started' : `Next  →`}
-            </span>
+            <span>{isLast ? '🚀 Launch Finova App' : 'Next Step →'}</span>
           </button>
 
           {/* Slide counter */}
           <div style={{
-            marginTop: 12,
-            fontSize: 11,
+            marginTop: 10,
+            fontSize: 10.5,
             color: '#94A3B8',
             fontWeight: 500,
-            letterSpacing: '0.5px',
           }}>
-            {current + 1} / {slides.length}
+            {current + 1} of {slides.length}
           </div>
-
-          {/* Home bar */}
-          <div style={{
-            width: 100, height: 4, background: '#0F172A',
-            borderRadius: 2, opacity: 0.12,
-            marginTop: 8,
-          }} />
         </div>
       </div>
-
-      {/* Progress bar fill keyframe (injected via style) */}
-      <style>{`
-        @keyframes progress-bar-fill {
-          from { transform: scaleX(0); }
-          to   { transform: scaleX(1); }
-        }
-      `}</style>
     </div>
   );
 }

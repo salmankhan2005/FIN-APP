@@ -85,23 +85,50 @@ function AuthenticatedApp() {
 function OnboardingGate() {
   const { user, loading, isAuthenticating, switchOrRestoreRole } = useAuth();
 
-  const [step, setStep] = useState(() => {
-    if (user) return STEP_APP;
-    const seen = sessionStorage.getItem('finova_onboarding_done') || localStorage.getItem('finova_onboarding_done');
-    return seen ? STEP_ROLE : STEP_SPLASH;
-  });
-
+  // Always show SplashScreen on every app open/refresh
+  const [step, setStep] = useState(STEP_SPLASH);
   const [selectedRole, setSelectedRole] = useState('ADMIN');
 
   useEffect(() => {
     if (user) {
-      sessionStorage.setItem('finova_onboarding_done', 'true');
       localStorage.setItem('finova_onboarding_done', 'true');
-      setStep(STEP_APP);
+      sessionStorage.setItem('finova_onboarding_done', 'true');
+      // Transition to app only after splash/onboarding has concluded
+      if (step !== STEP_SPLASH && step !== STEP_ONBOARDING) {
+        setStep(STEP_APP);
+      }
     } else if (!isAuthenticating && !loading && step === STEP_APP) {
       setStep(STEP_ROLE);
     }
   }, [user, isAuthenticating, loading, step]);
+
+  const handleSplashFinish = () => {
+    // Check if device has already completed onboarding
+    const hasSeenOnboarding = localStorage.getItem('finova_onboarding_done') === 'true';
+
+    if (!hasSeenOnboarding) {
+      // New user: display onboarding slides once
+      setStep(STEP_ONBOARDING);
+    } else {
+      // Returning user: skip onboarding completely
+      if (user) {
+        setStep(STEP_APP);
+      } else {
+        setStep(STEP_ROLE);
+      }
+    }
+  };
+
+  const handleOnboardingFinish = () => {
+    // Permanently remember that onboarding has been completed
+    localStorage.setItem('finova_onboarding_done', 'true');
+    sessionStorage.setItem('finova_onboarding_done', 'true');
+    if (user) {
+      setStep(STEP_APP);
+    } else {
+      setStep(STEP_ROLE);
+    }
+  };
 
   const handleSelectRole = (role) => {
     setSelectedRole(role);
@@ -118,7 +145,7 @@ function OnboardingGate() {
     setStep(STEP_LOGIN);
   };
 
-  if (isAuthenticating) {
+  if (isAuthenticating && step !== STEP_SPLASH) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -143,21 +170,17 @@ function OnboardingGate() {
   return (
     <>
       {step === STEP_SPLASH && (
-        <SplashScreen onFinish={() => setStep(STEP_ONBOARDING)} duration={1800} />
+        <SplashScreen onFinish={handleSplashFinish} duration={1800} />
       )}
       {step === STEP_ONBOARDING && (
         <Suspense fallback={<LoadingFallback />}>
-          <OnboardingSlides onFinish={() => setStep(STEP_ROLE)} />
+          <OnboardingSlides onFinish={handleOnboardingFinish} />
         </Suspense>
       )}
       {step === STEP_ROLE && (
         <RoleSelectionPage
           onSelectRole={handleSelectRole}
-          onBack={
-            !sessionStorage.getItem('finova_onboarding_done') && !localStorage.getItem('finova_onboarding_done')
-              ? () => setStep(STEP_ONBOARDING)
-              : null
-          }
+          onBack={null}
         />
       )}
       {step === STEP_LOGIN && (

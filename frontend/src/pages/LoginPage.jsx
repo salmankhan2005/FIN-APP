@@ -14,8 +14,6 @@ const roleConfigs = {
     idLabel: 'Username or Email',
     idPlaceholder: 'admin@finova.com or phone',
     passPlaceholder: '••••••••',
-    demoUser: '6380372501',
-    demoPass: 'Admin@123456',
     showGoogle: true,
   },
   AGENT: {
@@ -28,8 +26,6 @@ const roleConfigs = {
     idLabel: 'Agent Phone or Agent ID',
     idPlaceholder: '9659447695 or AGT-7625',
     passPlaceholder: 'Password or AGT-XXXX',
-    demoUser: '9659447695',
-    demoPass: 'Admin@123456',
     showGoogle: false,
   },
   CUSTOMER: {
@@ -42,8 +38,6 @@ const roleConfigs = {
     idLabel: 'Registered Mobile Number',
     idPlaceholder: '10-digit mobile number',
     passPlaceholder: 'Your PIN or password',
-    demoUser: '7418602826',
-    demoPass: 'Admin@123456',
     showGoogle: false,
   },
 };
@@ -230,7 +224,7 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
             </div>
 
             {/* Password input */}
-            <div style={{ marginBottom: 6 }}>
+            <div style={{ marginBottom: 20 }}>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{
                   position: 'absolute', left: 14, top: '50%',
@@ -267,21 +261,6 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-            </div>
-
-            {/* Quick Demo Fill */}
-            <div style={{ textAlign: 'right', marginBottom: 16 }}>
-              <button
-                type="button"
-                onClick={() => setForm({ userId: cfg.demoUser, password: cfg.demoPass })}
-                style={{
-                  background: 'none', border: 'none',
-                  color: cfg.color, fontSize: 11.5, fontWeight: 600,
-                  cursor: 'pointer', padding: 0,
-                }}
-              >
-                Auto-fill demo credentials
-              </button>
             </div>
 
             {/* Submit button */}

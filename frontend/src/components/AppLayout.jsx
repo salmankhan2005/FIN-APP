@@ -141,7 +141,9 @@ export default function AppLayout() {
         <div className="mobile-header-brand">
           <span className="mobile-header-title">{currentPage}</span>
         </div>
-        <div className="mobile-header-user" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div className="mobile-header-user" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Theme Toggle in Mobile Header */}
+          <ThemeToggle compact={true} />
 
           {/* Notification Bell Button */}
           <div style={{ position: 'relative' }}>

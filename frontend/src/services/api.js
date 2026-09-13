@@ -161,6 +161,7 @@ export const customersAPI = {
     apiCache.invalidate('customers');
     return res;
   }),
+  checkGuarantor: (params) => api.get('/customers/check-guarantor', { params }).then(extractData),
 };
 
 // ─── Loans ────────────────────────────────────────────────────────────────────
@@ -187,6 +188,12 @@ export const loansAPI = {
     return res;
   }),
   getPreclosure: (id) => api.get(`/loans/${id}/preclosure`).then(extractData),
+  getTopUpEligibility: (id) => api.get(`/loans/${id}/top-up-eligibility`).then(extractData),
+  topUp: (id, data) => api.post(`/loans/${id}/top-up`, data).then(extractData).then(res => {
+    apiCache.invalidate('loans');
+    apiCache.invalidate('dashboard');
+    return res;
+  }),
   downloadReport: () => Promise.resolve({ data: 'Report available via backend only' }),
 };
 
@@ -239,6 +246,21 @@ export const dashboardAPI = {
     apiCache.clearAll();
     return res;
   }),
+};
+
+// ─── Settlements (Evening Cash Handover) ──────────────────────────────────────
+export const settlementsAPI = {
+  todaySummary: (params) => api.get('/settlements/today-summary', { params }).then(extractData),
+  list: (params) => api.get('/settlements', { params }).then(extractData),
+  close: (data) => api.post('/settlements/close', data).then(extractData),
+};
+
+// ─── Day Book (Roznamcha / நாட்குறிப்பு) ──────────────────────────────────────────
+export const daybookAPI = {
+  get: (params) => api.get('/daybook', { params }).then(extractData),
+  setOpeningBalance: (data) => api.post('/daybook/opening-balance', data).then(extractData),
+  addExpense: (data) => api.post('/daybook/expense', data).then(extractData),
+  deleteExpense: (id) => api.delete(`/daybook/expense/${id}`).then(extractData),
 };
 
 // ─── Reports ──────────────────────────────────────────────────────────────────

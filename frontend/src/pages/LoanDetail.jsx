@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { loansAPI, paymentsAPI } from '../services/api';
 import toast from 'react-hot-toast';
-import { ArrowLeft, CheckCircle, Clock, AlertTriangle, HandCoins, X, Banknote, Lock, Trash2, User, ShieldCheck, Phone, Eye, FileText, Calendar, ArrowRight, CornerDownRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, AlertTriangle, HandCoins, X, Banknote, Lock, Trash2, User, ShieldCheck, Phone, Eye, FileText, Calendar, ArrowRight, CornerDownRight, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { isPdfDocument } from '../utils/imageCompressor';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -31,8 +31,63 @@ export default function LoanDetail() {
   const [expandedWeeks, setExpandedWeeks] = useState({});
   const toggleWeek = (w) => setExpandedWeeks(prev => ({ ...prev, [w]: prev[w] !== undefined ? !prev[w] : false }));
   
+  const [topUpModal, setTopUpModal] = useState(false);
+  const [topUpEligibility, setTopUpEligibility] = useState(null);
+  const [topUpForm, setTopUpForm] = useState({
+    newPrincipalAmount: '',
+    interestRate: '',
+    tenure: '10',
+    tenureUnit: 'WEEKS',
+    interestType: 'WITHOUT_INTEREST',
+    processingFee: '',
+    repaymentFrequency: 'DAILY'
+  });
+  const [submittingTopUp, setSubmittingTopUp] = useState(false);
+
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const handleOpenTopUpModal = async () => {
+    try {
+      const res = await loansAPI.getTopUpEligibility(id);
+      setTopUpEligibility(res);
+      setTopUpForm({
+        newPrincipalAmount: String((loan?.principalAmount || 20000) * 1.5),
+        interestRate: String(loan?.interestRate || 0),
+        tenure: String(loan?.tenure || 10),
+        tenureUnit: loan?.tenureUnit || 'WEEKS',
+        interestType: loan?.interestType || 'WITHOUT_INTEREST',
+        processingFee: String(loan?.processingFee || 0),
+        repaymentFrequency: loan?.repaymentFrequency || 'DAILY'
+      });
+      setTopUpModal(true);
+    } catch (e) {
+      toast.error('Failed to check top-up eligibility');
+    }
+  };
+
+  const handleExecuteTopUp = async (e) => {
+    e.preventDefault();
+    setSubmittingTopUp(true);
+    try {
+      const res = await loansAPI.topUp(id, {
+        newPrincipalAmount: parseFloat(topUpForm.newPrincipalAmount),
+        interestRate: parseFloat(topUpForm.interestRate || 0),
+        tenure: parseInt(topUpForm.tenure),
+        tenureUnit: topUpForm.tenureUnit,
+        interestType: topUpForm.interestType,
+        processingFee: parseFloat(topUpForm.processingFee || 0),
+        repaymentFrequency: topUpForm.repaymentFrequency
+      });
+      toast.success(res.message || 'Top-Up Loan created!');
+      setTopUpModal(false);
+      navigate(`/loans/${res.data?.newLoan?.id || id}`);
+    } catch (err) {
+      toast.error(err.message || 'Failed to disburse top-up loan');
+    } finally {
+      setSubmittingTopUp(false);
+    }
+  };
 
   const handleOpenPrincipalModal = async () => {
     setPrincipalForm({ amount: String(loan?.outstandingPrincipal ?? loan?.principalAmount ?? 0), accruedInterest: '0', penaltyAmount: '0', paymentMode: 'CASH', reference: '', notes: '' });
@@ -218,9 +273,20 @@ export default function LoanDetail() {
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>{paidCount}/{totalCount} paid</div>
 
+        {/* Top-Up / Renewal Loan button */}
+        {loan.status === 'ACTIVE' && (
+          <button
+            className="btn btn-primary"
+            style={{ width: '100%', marginTop: 12, background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 700 }}
+            onClick={handleOpenTopUpModal}
+          >
+            <RefreshCw size={15} /> Top-Up & Renewal Loan (மறு கடன்)
+          </button>
+        )}
+
         {/* Pay Principal button */}
         {loan.status === 'ACTIVE' && outstanding > 0 && (
-          <button className="btn btn-ghost" style={{ width: '100%', marginTop: 12, borderColor: 'rgba(245,158,11,0.3)', color: 'var(--warning-600)' }}
+          <button className="btn btn-ghost" style={{ width: '100%', marginTop: 8, borderColor: 'rgba(245,158,11,0.3)', color: 'var(--warning-600)' }}
             onClick={handleOpenPrincipalModal}>
             <Banknote size={15} /> Close Loan / Pay Principal
           </button>
@@ -926,6 +992,136 @@ export default function LoanDetail() {
             >
               <X size={18} />
             </button>
+          </div>
+        </div>
+      )}
+      {/* Top-Up / Renewal Loan Modal */}
+      {topUpModal && (
+        <div className="modal-overlay" style={{ zIndex: 10001 }} onClick={() => setTopUpModal(false)}>
+          <div className="card" style={{ maxWidth: 480, width: '92vw', padding: 24 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <RefreshCw size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Top-Up Loan Rollover</h3>
+                  <div style={{ fontSize: 11, color: '#64748b' }}>Renew loan & disburse net fresh cash</div>
+                </div>
+              </div>
+              <button type="button" onClick={() => setTopUpModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Deduction Calculation Callout */}
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              padding: '12px 14px',
+              marginBottom: 16,
+              fontSize: 12.5
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ color: '#64748b' }}>Old Loan Number:</span>
+                <span style={{ fontWeight: 700 }}>{loan.loanNumber}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ color: '#64748b' }}>Outstanding Balance Deducted:</span>
+                <span style={{ fontWeight: 800, color: '#ef4444' }}>
+                  -₹{(topUpEligibility?.totalOldBalanceDeduction || outstanding).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px dashed #cbd5e1' }}>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>Net Disbursed Cash (Borrower Gets):</span>
+                <span style={{ fontWeight: 900, color: '#10b981', fontSize: 14 }}>
+                  ₹{Math.max(0, (parseFloat(topUpForm.newPrincipalAmount) || 0) - (topUpEligibility?.totalOldBalanceDeduction || outstanding) - (parseFloat(topUpForm.processingFee) || 0)).toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleExecuteTopUp}>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+                  New Loan Principal Amount (₹) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={(topUpEligibility?.totalOldBalanceDeduction || outstanding) + 1}
+                  value={topUpForm.newPrincipalAmount}
+                  onChange={e => setTopUpForm(f => ({ ...f, newPrincipalAmount: e.target.value }))}
+                  placeholder="e.g. 50000"
+                  className="form-control"
+                  style={{ width: '100%', fontSize: 15, fontWeight: 700 }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, marginBottom: 4 }}>Loan Type</label>
+                  <select
+                    value={topUpForm.interestType}
+                    onChange={e => setTopUpForm(f => ({ ...f, interestType: e.target.value }))}
+                    className="form-control"
+                    style={{ width: '100%' }}
+                  >
+                    <option value="WITHOUT_INTEREST">Deduction (கந்து வட்டி)</option>
+                    <option value="FLAT">Flat Interest</option>
+                    <option value="EMI">EMI</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, marginBottom: 4 }}>Tenure (Weeks / Mos)</label>
+                  <input
+                    type="number"
+                    value={topUpForm.tenure}
+                    onChange={e => setTopUpForm(f => ({ ...f, tenure: e.target.value }))}
+                    className="form-control"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, marginBottom: 4 }}>Processing Fee (₹)</label>
+                  <input
+                    type="number"
+                    value={topUpForm.processingFee}
+                    onChange={e => setTopUpForm(f => ({ ...f, processingFee: e.target.value }))}
+                    placeholder="0"
+                    className="form-control"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, marginBottom: 4 }}>Frequency</label>
+                  <select
+                    value={topUpForm.repaymentFrequency}
+                    onChange={e => setTopUpForm(f => ({ ...f, repaymentFrequency: e.target.value }))}
+                    className="form-control"
+                    style={{ width: '100%' }}
+                  >
+                    <option value="DAILY">Daily</option>
+                    <option value="WEEKLY">Weekly</option>
+                    <option value="MONTHLY">Monthly</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setTopUpModal(false)} disabled={submittingTopUp}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={submittingTopUp} style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' }}>
+                  {submittingTopUp ? 'Disbursing...' : 'Disburse Top-Up Loan'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

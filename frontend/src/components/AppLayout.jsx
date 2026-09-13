@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { notificationsAPI } from '../services/api';
 import {
   LayoutDashboard, Users, Landmark, HandCoins, ChevronRight, Plus,
-  FileBarChart, Shield, UserCog, LogOut, Menu, X, Settings, Bell, History
+  FileBarChart, Shield, UserCog, LogOut, Menu, X, Settings, Bell, History,
+  BookOpen, Banknote
 } from 'lucide-react';
 
 export default function AppLayout() {
@@ -46,8 +47,10 @@ export default function AppLayout() {
           { to: '/loans', icon: Landmark, label: 'Loans' },
           { to: '/loans/create', icon: Plus, label: 'Create Loan' },
         ]},
-        { section: 'Operations', items: [
+        { section: 'Operations & Cash', items: [
           { to: '/collections', icon: HandCoins, label: 'Collections' },
+          { to: '/daybook', icon: BookOpen, label: 'Day Book (நாட்குறிப்பு)' },
+          { to: '/settlements', icon: Banknote, label: 'Cash Handover' },
           { to: '/payment-history', icon: History, label: 'History' },
         ]},
         { section: 'Admin', items: [

@@ -30,6 +30,8 @@ const NotificationsDashboard = lazyWithRetry(() => import('./pages/Notifications
 const ProfitPage         = lazyWithRetry(() => import('./pages/ProfitPage'));
 const CollectionRoutePage = lazyWithRetry(() => import('./pages/CollectionRoutePage'));
 const PaymentsHistoryPage = lazyWithRetry(() => import('./pages/PaymentsHistoryPage'));
+const DayBookPage        = lazyWithRetry(() => import('./pages/DayBookPage'));
+const CashSettlementPage = lazyWithRetry(() => import('./pages/CashSettlementPage'));
 const OnboardingSlides   = lazyWithRetry(() => import('./components/OnboardingSlides'));
 
 const STEP_SPLASH = 'splash';
@@ -70,6 +72,8 @@ function AuthenticatedApp() {
           <Route path="loans/:id" element={<LoanDetail />} />
           <Route path="collections" element={<CollectionPage />} />
           <Route path="notifications" element={<NotificationsDashboard />} />
+          <Route path="daybook" element={isAdmin ? <DayBookPage /> : <Navigate to="/" replace />} />
+          <Route path="settlements" element={isAdmin ? <CashSettlementPage /> : <Navigate to="/" replace />} />
           <Route path="users" element={isAdmin ? <UsersPage /> : <Navigate to="/" replace />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="profit" element={isAdmin ? <ProfitPage /> : <Navigate to="/" replace />} />

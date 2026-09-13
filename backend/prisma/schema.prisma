@@ -30,6 +30,7 @@ model User {
   payments     Payment[]  @relation("CollectedBy")
   auditLogs    AuditLog[]
   refreshTokens RefreshToken[]
+  settlements  CashSettlement[] @relation("AgentSettlements")
 
   @@index([email])
   @@index([phone])
@@ -232,3 +233,60 @@ model NotificationLog {
   @@index([createdAt])
   @@index([type, readAt])
 }
+
+model CashSettlement {
+  id                 String   @id @default(uuid())
+  adminId            String
+  agentId            String
+  agent              User     @relation("AgentSettlements", fields: [agentId], references: [id])
+  settlementDate     DateTime
+  totalCollected     Float    @default(0)
+  collectionCount    Int      @default(0)
+  fuelExpense        Float    @default(0)
+  commission         Float    @default(0)
+  otherDeductions    Float    @default(0)
+  expectedCash       Float    @default(0)
+  actualCashReceived Float    @default(0)
+  difference         Float    @default(0)
+  status             String   @default("PENDING") // PENDING | VERIFIED | LOCKED
+  verifiedById       String?
+  signOffOtp         String?
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([adminId])
+  @@index([adminId, settlementDate])
+  @@index([agentId, settlementDate])
+  @@index([status])
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  adminId     String
+  date        DateTime @default(now())
+  category    String   // PETROL | TEA_SNACKS | RENT | SALARY | STATIONERY | REPAIR | MISC
+  amount      Float
+  description String
+  paymentMode String   @default("CASH") // CASH | UPI | BANK
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([adminId])
+  @@index([adminId, date])
+  @@index([category])
+}
+
+model DayBookOpeningBalance {
+  id             String   @id @default(uuid())
+  adminId        String
+  date           DateTime // Midnight of that day
+  openingBalance Float    @default(0)
+  notes          String?
+  updatedAt      DateTime @updatedAt
+
+  @@unique([adminId, date])
+  @@index([adminId])
+  @@index([date])
+}
+

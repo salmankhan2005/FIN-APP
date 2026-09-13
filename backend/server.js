@@ -65,6 +65,8 @@ app.use('/api/dashboard',  require('./src/routes/dashboard'));
 app.use('/api/reports',    require('./src/routes/reports'));
 app.use('/api/audit',      require('./src/routes/audit'));
 app.use('/api/notifications', require('./src/routes/notifications'));
+app.use('/api/settlements',   require('./src/routes/settlements'));
+app.use('/api/daybook',       require('./src/routes/daybook'));
 
 // Health check
 app.get(['/health', '/api/health'], (req, res) => res.json({
@@ -205,7 +207,85 @@ async function syncDatabaseSchema() {
     for (const item of loanCols) {
       try { await prisma.$executeRawUnsafe(`ALTER TABLE "Loan" ADD COLUMN IF NOT EXISTS "${item.col}" ${item.type};`); } catch (_) {}
     }
-    console.log('✅ Loan schema columns verified');
+    // High-performance database query indexes
+    try {
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Loan_adminId_idx" ON "Loan"("adminId");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Loan_adminId_status_idx" ON "Loan"("adminId", "status");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Loan_customerId_status_idx" ON "Loan"("customerId", "status");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Loan_createdAt_idx" ON "Loan"("createdAt");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Repayment_loanId_idx" ON "Repayment"("loanId");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Repayment_loanId_status_idx" ON "Repayment"("loanId", "status");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Repayment_dueDate_idx" ON "Repayment"("dueDate");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Repayment_dueDate_status_idx" ON "Repayment"("dueDate", "status");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Payment_repaymentId_idx" ON "Payment"("repaymentId");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Payment_collectedAt_idx" ON "Payment"("collectedAt");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Customer_adminId_isActive_idx" ON "Customer"("adminId", "isActive");`);
+    } catch (_) {}
+    console.log('✅ Loan schema & performance indices verified');
+
+    // ── CashSettlement, Expense & DayBookOpeningBalance tables ──────────────
+    try {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "CashSettlement" (
+          "id" TEXT PRIMARY KEY,
+          "adminId" TEXT NOT NULL,
+          "agentId" TEXT NOT NULL,
+          "settlementDate" TIMESTAMP(3) NOT NULL,
+          "totalCollected" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "collectionCount" INTEGER NOT NULL DEFAULT 0,
+          "fuelExpense" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "commission" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "otherDeductions" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "expectedCash" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "actualCashReceived" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "difference" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "status" TEXT NOT NULL DEFAULT 'PENDING',
+          "verifiedById" TEXT,
+          "signOffOtp" TEXT,
+          "notes" TEXT,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CashSettlement_adminId_idx" ON "CashSettlement"("adminId");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CashSettlement_adminId_settlementDate_idx" ON "CashSettlement"("adminId", "settlementDate");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CashSettlement_agentId_settlementDate_idx" ON "CashSettlement"("agentId", "settlementDate");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CashSettlement_status_idx" ON "CashSettlement"("status");`);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Expense" (
+          "id" TEXT PRIMARY KEY,
+          "adminId" TEXT NOT NULL,
+          "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "category" TEXT NOT NULL,
+          "amount" DOUBLE PRECISION NOT NULL,
+          "description" TEXT NOT NULL,
+          "paymentMode" TEXT NOT NULL DEFAULT 'CASH',
+          "createdById" TEXT NOT NULL,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Expense_adminId_idx" ON "Expense"("adminId");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Expense_adminId_date_idx" ON "Expense"("adminId", "date");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Expense_category_idx" ON "Expense"("category");`);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "DayBookOpeningBalance" (
+          "id" TEXT PRIMARY KEY,
+          "adminId" TEXT NOT NULL,
+          "date" TIMESTAMP(3) NOT NULL,
+          "openingBalance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "notes" TEXT,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "DayBookOpeningBalance_adminId_date_key" ON "DayBookOpeningBalance"("adminId", "date");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "DayBookOpeningBalance_adminId_idx" ON "DayBookOpeningBalance"("adminId");`);
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "DayBookOpeningBalance_date_idx" ON "DayBookOpeningBalance"("date");`);
+      console.log('✅ CashSettlement, Expense & DayBook tables verified');
+    } catch (tblErr) {
+      console.warn('⚠️ Table verification note:', tblErr.message);
+    }
 
     // ── Workspace isolation: link legacy unassigned records & deduplicate admin accounts
     try {

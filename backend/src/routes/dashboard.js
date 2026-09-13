@@ -203,7 +203,7 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
         orderBy: { collectedAt: 'desc' },
         take: 5,
       }),
-      // 20. Active loans for breakdown
+      // 20. Active loans for breakdown (optimized: fetch only pending/overdue repayments)
       prisma.loan.findMany({
         where: { status: 'ACTIVE', AND: [loanFilter] },
         select: {
@@ -212,7 +212,10 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
           principalAmount: true,
           totalPayable: true,
           outstandingPrincipal: true,
-          repayments: { select: { status: true, dueDate: true, dueAmount: true, paidAmount: true } },
+          repayments: {
+            where: { status: { in: ['OVERDUE', 'PARTIAL', 'PENDING'] } },
+            select: { status: true, dueDate: true, dueAmount: true, paidAmount: true }
+          },
         },
       }),
       // 21...26. 6-Month chart queries executed concurrently

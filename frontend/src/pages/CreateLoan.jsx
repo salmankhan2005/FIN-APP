@@ -17,6 +17,9 @@ export default function CreateLoan() {
     tenureUnit: 'WEEKS', repaymentFrequency: 'DAILY', startDate: new Date().toISOString().split('T')[0],
   });
 
+  const [guarantorAlert, setGuarantorAlert] = useState(null);
+  const [checkingGuarantor, setCheckingGuarantor] = useState(false);
+
   const loadCustomers = () => {
     customersAPI.list({ limit: 200 }).then(r => setCustomers(r)).catch(() => {});
   };
@@ -37,6 +40,21 @@ export default function CreateLoan() {
   };
 
   const selectedCustomer = customers.find(c => c.id === form.customerId);
+
+  useEffect(() => {
+    if (selectedCustomer?.jaminIdNumber || selectedCustomer?.jaminPhone) {
+      setCheckingGuarantor(true);
+      customersAPI.checkGuarantor({
+        idNumber: selectedCustomer.jaminIdNumber,
+        phone: selectedCustomer.jaminPhone
+      })
+        .then(res => setGuarantorAlert(res))
+        .catch(() => setGuarantorAlert(null))
+        .finally(() => setCheckingGuarantor(false));
+    } else {
+      setGuarantorAlert(null);
+    }
+  }, [selectedCustomer]);
 
   const preview = (() => {
     const isWithoutInterest = form.interestType === 'WITHOUT_INTEREST';
@@ -264,6 +282,31 @@ export default function CreateLoan() {
               ) : (
                 <div style={{ borderTop: '1px solid var(--border-subtle, #e2e8f0)', paddingTop: 6, fontSize: 11, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span>⚠️ No Jamin (Guarantor) added yet for this customer.</span>
+                </div>
+              )}
+
+              {/* Guarantor Cross-Debt Network Risk Warning Alert */}
+              {guarantorAlert?.hasRisk && (
+                <div style={{
+                  marginTop: 6,
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#991b1b',
+                  fontSize: 11.5,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4
+                }}>
+                  <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>🚨 Jamin Cross-Debt Risk Alert:</span>
+                  </div>
+                  <ul style={{ margin: '2px 0 0 16px', padding: 0 }}>
+                    {guarantorAlert.warnings.map((w, idx) => (
+                      <li key={idx} style={{ lineHeight: 1.4 }}>{w}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

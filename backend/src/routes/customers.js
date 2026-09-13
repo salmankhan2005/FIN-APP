@@ -3,7 +3,7 @@ const router = express.Router();
 const prisma = require('../utils/prisma');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../utils/audit');
-const { getCustomerFilter, assertOwnership } = require('../utils/tenant');
+const { getCustomerFilter, getLoanFilter, assertOwnership } = require('../utils/tenant');
 
 // GET /api/customers
 router.get('/', authenticate, async (req, res) => {
@@ -148,6 +148,174 @@ router.get('/sync-schema', authenticate, async (req, res) => {
       }
     }
     res.json({ success: true, message: 'Customer & Jamin database columns verified successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/customers/check-guarantor — Cross-Debt & Circular Guarantee Network Detection
+router.post('/check-guarantor', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => {
+  try {
+    const { jaminPhone, jaminIdNumber, customerPhone, customerId } = req.body;
+
+    const phone = (jaminPhone || '').trim();
+    const idNum = (jaminIdNumber || '').trim();
+    const custPhone = (customerPhone || '').trim();
+
+    if ((!phone || phone.length < 5) && (!idNum || idNum.length < 4)) {
+      return res.json({
+        success: true,
+        data: {
+          riskLevel: 'NONE',
+          alerts: [],
+          activeGuaranteeCount: 0,
+          totalGuaranteeExposure: 0,
+          isBorrower: false,
+          hasOverdueLoans: false
+        }
+      });
+    }
+
+    const customerFilter = getCustomerFilter(req.user);
+    const loanFilter = getLoanFilter(req.user);
+
+    const orClauses = [];
+    if (phone && phone.length >= 5) orClauses.push({ phone });
+    if (idNum && idNum.length >= 4) orClauses.push({ idNumber: idNum });
+
+    // 1. Check if the proposed guarantor is already an active borrower themselves
+    const existingBorrower = orClauses.length > 0 ? await prisma.customer.findFirst({
+      where: {
+        OR: orClauses,
+        AND: [customerFilter]
+      },
+      include: {
+        loans: {
+          where: { status: 'ACTIVE' },
+          include: {
+            repayments: {
+              where: { status: 'OVERDUE' }
+            }
+          }
+        }
+      }
+    }) : null;
+
+    let isBorrower = false;
+    let hasOverdueLoans = false;
+    let overdueCount = 0;
+    let borrowerActiveLoans = 0;
+    let circularDebt = false;
+
+    const alerts = [];
+
+    if (existingBorrower) {
+      isBorrower = true;
+      borrowerActiveLoans = existingBorrower.loans.length;
+      for (const l of existingBorrower.loans) {
+        if (l.repayments && l.repayments.length > 0) {
+          hasOverdueLoans = true;
+          overdueCount += l.repayments.length;
+        }
+      }
+
+      if (hasOverdueLoans) {
+        alerts.push({
+          type: 'DANGER',
+          msgEn: `🚨 CRITICAL RISK: Guarantor is an active borrower with ${overdueCount} OVERDUE installment(s)!`,
+          msgTa: `🚨 அதிக ஆபத்து: இந்த ஜாமீன்தாரரின் சொந்த கடனில் ${overdueCount} நிலுவைத் தவணைகள் (Overdue) உள்ளன!`
+        });
+      } else if (borrowerActiveLoans > 0) {
+        alerts.push({
+          type: 'INFO',
+          msgEn: `Guarantor is also an active borrower with ${borrowerActiveLoans} running loan(s).`,
+          msgTa: `இந்த ஜாமீன்தாரரும் ${borrowerActiveLoans} நடப்புக் கடன் பெற்றுள்ளார்.`
+        });
+      }
+
+      // Check Circular Guarantee: Is this borrower's guarantor the applicant?
+      if (custPhone && existingBorrower.jaminPhone && existingBorrower.jaminPhone === custPhone) {
+        circularDebt = true;
+        alerts.push({
+          type: 'DANGER',
+          msgEn: `🚨 CIRCULAR DEBT DETECTED: This person's loan is guaranteed by this applicant! Cross-guarantee loop!`,
+          msgTa: `🚨 சுழல் கடன் அபாயம் (Circular Debt): இந்த நபரின் கடனுக்கு தற்போதைய விண்ணப்பதாரரே ஜாமீன் அளித்துள்ளார்!`
+        });
+      }
+    }
+
+    // 2. Check how many other active loans are currently guaranteed by this person
+    const jaminOrClauses = [];
+    if (phone && phone.length >= 5) jaminOrClauses.push({ jaminPhone: phone });
+    if (idNum && idNum.length >= 4) jaminOrClauses.push({ jaminIdNumber: idNum });
+
+    const otherGuaranteedCustomers = jaminOrClauses.length > 0 ? await prisma.customer.findMany({
+      where: {
+        OR: jaminOrClauses,
+        AND: [customerFilter],
+        ...(customerId ? { id: { not: customerId } } : {})
+      },
+      include: {
+        loans: {
+          where: { status: 'ACTIVE', AND: [loanFilter] },
+          select: { id: true, loanNumber: true, principalAmount: true }
+        }
+      }
+    }) : [];
+
+    let activeGuaranteeCount = 0;
+    let totalGuaranteeExposure = 0;
+    const guaranteedLoanNumbers = [];
+
+    for (const c of otherGuaranteedCustomers) {
+      for (const l of c.loans) {
+        activeGuaranteeCount++;
+        totalGuaranteeExposure += (l.principalAmount || 0);
+        guaranteedLoanNumbers.push(l.loanNumber);
+      }
+    }
+
+    if (activeGuaranteeCount >= 3) {
+      alerts.push({
+        type: 'DANGER',
+        msgEn: `🚨 OVER-EXPOSURE: Guarantor is already backing ${activeGuaranteeCount} other active loans (Total: ₹${totalGuaranteeExposure.toLocaleString('en-IN')})! Limit is 3.`,
+        msgTa: `🚨 அதிக உத்தரவாதம்: இந்த ஜாமீன்தாரர் ஏற்கனவே ${activeGuaranteeCount} கடன்களுக்கு உத்தரவாதம் அளித்துள்ளார் (மொத்தம் ₹${totalGuaranteeExposure.toLocaleString('en-IN')})!`
+      });
+    } else if (activeGuaranteeCount > 0) {
+      alerts.push({
+        type: 'WARNING',
+        msgEn: `⚠️ Notice: Currently guaranteeing ${activeGuaranteeCount} other active loan(s) (₹${totalGuaranteeExposure.toLocaleString('en-IN')}) - [${guaranteedLoanNumbers.join(', ')}].`,
+        msgTa: `⚠️ குறிப்பு: ஏற்கனவே ${activeGuaranteeCount} நடப்புக் கடனுக்கு ஜாமீன் அளித்துள்ளார் (₹${totalGuaranteeExposure.toLocaleString('en-IN')}).`
+      });
+    }
+
+    let riskLevel = 'CLEAN';
+    if (hasOverdueLoans || circularDebt || activeGuaranteeCount >= 3) {
+      riskLevel = 'HIGH';
+    } else if (activeGuaranteeCount > 0 || isBorrower) {
+      riskLevel = 'MEDIUM';
+    }
+
+    if (alerts.length === 0) {
+      alerts.push({
+        type: 'SUCCESS',
+        msgEn: '✓ Verified Clean Guarantor: No cross-guarantees or active defaults detected.',
+        msgTa: '✓ நம்பகமான ஜாமீன்தாரர்: பிற கடன்களிலோ அல்லது நிலுவைகளிலோ எந்த சிக்கலும் இல்லை.'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        riskLevel,
+        alerts,
+        activeGuaranteeCount,
+        totalGuaranteeExposure,
+        isBorrower,
+        hasOverdueLoans,
+        circularDebt
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

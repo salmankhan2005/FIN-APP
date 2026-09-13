@@ -72,7 +72,7 @@ app.use('/api/daybook',       require('./src/routes/daybook'));
 app.get(['/health', '/api/health'], (req, res) => res.json({
   status: 'ok',
   app: process.env.APP_NAME || 'Finova',
-  version: '2.3.0-penalty-carryforward',
+  version: '2.4.0-settlements-daybook',
   timestamp: new Date().toISOString()
 }));
 

@@ -446,24 +446,41 @@ export default function DayBookPage() {
           <div className="card" style={{ maxWidth: 420, width: '100%', padding: 24 }}>
             <h3 style={{ margin: '0 0 16px', fontSize: '1.1rem', fontWeight: 800 }}>Set Opening Balance</h3>
             <form onSubmit={handleSaveOpeningBalance}>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: 6 }}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: 6 }}>
                   Opening Cash Amount (₹)
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={openingInput}
-                  onChange={(e) => setOpeningInput(e.target.value)}
-                  placeholder="0.00"
-                  className="form-control"
-                  style={{ width: '100%' }}
-                />
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#f8fafc',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: 12,
+                  padding: '10px 14px'
+                }}>
+                  <span style={{ color: '#6366f1', fontSize: '18px', fontWeight: 800, marginRight: 6 }}>₹</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={openingInput}
+                    onChange={(e) => setOpeningInput(e.target.value)}
+                    placeholder="0.00"
+                    style={{
+                      width: '100%',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      fontSize: '18px',
+                      fontWeight: 800,
+                      color: '#0f172a'
+                    }}
+                  />
+                </div>
               </div>
 
-              <div style={{ marginBottom: 18 }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: 6 }}>
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: 6 }}>
                   Notes (Optional)
                 </label>
                 <input
@@ -471,8 +488,16 @@ export default function DayBookPage() {
                   value={openingNotes}
                   onChange={(e) => setOpeningNotes(e.target.value)}
                   placeholder="Optional notes (e.g. Carried forward cash in safe)"
-                  className="form-control"
-                  style={{ width: '100%' }}
+                  style={{
+                    width: '100%',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                    fontSize: '13.5px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
 
@@ -513,15 +538,23 @@ export default function DayBookPage() {
           <div className="card" style={{ maxWidth: 440, width: '100%', padding: 24 }}>
             <h3 style={{ margin: '0 0 16px', fontSize: '1.1rem', fontWeight: 800 }}>Record Daily Office Expense</h3>
             <form onSubmit={handleAddExpense}>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: 6 }}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: 6 }}>
                   Category (பிரிவு)
                 </label>
                 <select
                   value={expenseCategory}
                   onChange={(e) => setExpenseCategory(e.target.value)}
-                  className="form-control"
-                  style={{ width: '100%' }}
+                  style={{
+                    width: '100%',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                    fontSize: '13.5px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                 >
                   <option value="PETROL">Petrol / Fuel (பெட்ரோல்)</option>
                   <option value="TEA_SNACKS">Tea & Refreshments (டீ / காபி)</option>
@@ -534,24 +567,41 @@ export default function DayBookPage() {
                 </select>
               </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: 6 }}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: 6 }}>
                   Amount (₹)
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={expenseAmount}
-                  onChange={(e) => setExpenseAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="form-control"
-                  style={{ width: '100%' }}
-                />
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
+                  padding: '8px 12px'
+                }}>
+                  <span style={{ color: '#ef4444', fontSize: '15px', fontWeight: 800, marginRight: 6 }}>₹</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={expenseAmount}
+                    onChange={(e) => setExpenseAmount(e.target.value)}
+                    placeholder="0.00"
+                    style={{
+                      width: '100%',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      fontSize: '15px',
+                      fontWeight: 700,
+                      color: '#0f172a'
+                    }}
+                  />
+                </div>
               </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: 6 }}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: 6 }}>
                   Description / Reason
                 </label>
                 <input
@@ -560,20 +610,36 @@ export default function DayBookPage() {
                   value={expenseDesc}
                   onChange={(e) => setExpenseDesc(e.target.value)}
                   placeholder="Enter expense details (e.g. Field agent fuel allowance)"
-                  className="form-control"
-                  style={{ width: '100%' }}
+                  style={{
+                    width: '100%',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                    fontSize: '13.5px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
 
               <div style={{ marginBottom: 18 }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: 6 }}>
                   Payment Mode
                 </label>
                 <select
                   value={expensePaymentMode}
                   onChange={(e) => setExpensePaymentMode(e.target.value)}
-                  className="form-control"
-                  style={{ width: '100%' }}
+                  style={{
+                    width: '100%',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                    fontSize: '13.5px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                 >
                   <option value="CASH">Cash In Hand</option>
                   <option value="UPI">UPI / Online</option>

@@ -330,78 +330,147 @@ export default function CashSettlementPage() {
             {/* Deductions inputs */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: 4 }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: 6 }}>
                   Fuel / Petrol Expense (₹)
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={fuelExpense}
-                  onChange={(e) => setFuelExpense(e.target.value)}
-                  placeholder="0.00"
-                  className="form-control"
-                  style={{ width: '100%' }}
-                  disabled={summary?.isAlreadySettled}
-                />
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
+                  padding: '8px 12px'
+                }}>
+                  <span style={{ color: '#94a3b8', fontSize: '13.5px', fontWeight: 600, marginRight: 4 }}>₹</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={fuelExpense}
+                    onChange={(e) => setFuelExpense(e.target.value)}
+                    placeholder="0.00"
+                    style={{
+                      width: '100%',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      fontSize: '13.5px',
+                      fontWeight: 600,
+                      color: '#0f172a'
+                    }}
+                    disabled={summary?.isAlreadySettled}
+                  />
+                </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: 4 }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: 6 }}>
                   Commission (₹)
                 </label>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
+                  padding: '8px 12px'
+                }}>
+                  <span style={{ color: '#94a3b8', fontSize: '13.5px', fontWeight: 600, marginRight: 4 }}>₹</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={commission}
+                    onChange={(e) => setCommission(e.target.value)}
+                    placeholder="0.00"
+                    style={{
+                      width: '100%',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      fontSize: '13.5px',
+                      fontWeight: 600,
+                      color: '#0f172a'
+                    }}
+                    disabled={summary?.isAlreadySettled}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: 6 }}>
+                Other Deductions / Tea (₹)
+              </label>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: 10,
+                padding: '8px 12px'
+              }}>
+                <span style={{ color: '#94a3b8', fontSize: '13.5px', fontWeight: 600, marginRight: 4 }}>₹</span>
                 <input
                   type="number"
                   step="0.01"
-                  value={commission}
-                  onChange={(e) => setCommission(e.target.value)}
+                  value={otherDeductions}
+                  onChange={(e) => setOtherDeductions(e.target.value)}
                   placeholder="0.00"
-                  className="form-control"
-                  style={{ width: '100%' }}
+                  style={{
+                    width: '100%',
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    fontSize: '13.5px',
+                    fontWeight: 600,
+                    color: '#0f172a'
+                  }}
                   disabled={summary?.isAlreadySettled}
                 />
               </div>
             </div>
 
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: 4 }}>
-                Other Deductions / Tea (₹)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={otherDeductions}
-                onChange={(e) => setOtherDeductions(e.target.value)}
-                placeholder="0.00"
-                className="form-control"
-                style={{ width: '100%' }}
-                disabled={summary?.isAlreadySettled}
-              />
-            </div>
-
             {/* Actual physical cash received */}
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>
                 Actual Physical Cash Received in Hand (₹) *
               </label>
-              <input
-                type="number"
-                step="0.01"
-                required
-                value={actualCashReceived}
-                onChange={(e) => setActualCashReceived(e.target.value)}
-                placeholder="0.00"
-                className="form-control"
-                style={{ width: '100%', fontSize: '15px', fontWeight: 700, borderColor: diff === 0 ? '#10b981' : '#f59e0b' }}
-                disabled={summary?.isAlreadySettled}
-              />
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: '#f8fafc',
+                border: `1.5px solid ${Math.abs(diff) < 0.01 ? '#10b981' : '#cbd5e1'}`,
+                borderRadius: 12,
+                padding: '10px 14px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+              }}>
+                <span style={{ color: '#10b981', fontSize: '18px', fontWeight: 800, marginRight: 6 }}>₹</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={actualCashReceived}
+                  onChange={(e) => setActualCashReceived(e.target.value)}
+                  placeholder="0.00"
+                  style={{
+                    width: '100%',
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    fontSize: '18px',
+                    fontWeight: 800,
+                    color: '#0f172a'
+                  }}
+                  disabled={summary?.isAlreadySettled}
+                />
+              </div>
             </div>
 
             {/* Live Difference / Match Alert */}
             <div style={{
-              padding: '10px 14px',
-              borderRadius: 8,
+              padding: '12px 16px',
+              borderRadius: 10,
               marginBottom: 16,
-              fontSize: '12.5px',
+              fontSize: '13px',
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
@@ -414,15 +483,15 @@ export default function CashSettlementPage() {
                 {Math.abs(diff) < 0.01 ? <Check size={16} /> : <AlertTriangle size={16} />}
                 {Math.abs(diff) < 0.01 ? 'Cash Matches Perfectly' : diff < 0 ? 'Cash Shortage (குறைவு)' : 'Cash Excess (கூடுதல்)'}
               </span>
-              <span style={{ fontWeight: 800 }}>
+              <span style={{ fontWeight: 800, fontSize: '14px' }}>
                 {diff >= 0 ? '+' : ''}{fmt(diff)}
               </span>
             </div>
 
             {/* OTP / Sign-off & Notes */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
               <div>
-                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: 4 }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: 6 }}>
                   Admin PIN / OTP (Sign-off)
                 </label>
                 <input
@@ -430,14 +499,22 @@ export default function CashSettlementPage() {
                   value={signOffOtp}
                   onChange={(e) => setSignOffOtp(e.target.value)}
                   placeholder="Enter 4-digit PIN"
-                  className="form-control"
-                  style={{ width: '100%' }}
+                  style={{
+                    width: '100%',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 10,
+                    padding: '9px 12px',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxBox: 'border-box'
+                  }}
                   disabled={summary?.isAlreadySettled}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: 4 }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: 6 }}>
                   Notes / Remarks
                 </label>
                 <input
@@ -445,8 +522,16 @@ export default function CashSettlementPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Optional remarks (e.g. Verified & closed)"
-                  className="form-control"
-                  style={{ width: '100%' }}
+                  style={{
+                    width: '100%',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 10,
+                    padding: '9px 12px',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                   disabled={summary?.isAlreadySettled}
                 />
               </div>

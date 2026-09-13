@@ -7,6 +7,7 @@ import {
   FileBarChart, Shield, UserCog, LogOut, Menu, X, Settings, Bell, History,
   BookOpen, Banknote
 } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 
 export default function AppLayout() {
   const { user, logout, isSuperAdmin, isAdmin, isCustomer } = useAuth();
@@ -356,16 +357,21 @@ export default function AppLayout() {
           </nav>
 
           <div className="sidebar-user">
-            <div className="sidebar-avatar">
-              {user?.name?.charAt(0)?.toUpperCase()}
+            {/* Theme Toggle */}
+            <ThemeToggle />
+            {/* User info + logout row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="sidebar-avatar">
+                {user?.name?.charAt(0)?.toUpperCase()}
+              </div>
+              <div className="sidebar-user-info">
+                <div className="sidebar-user-name" style={{ color: 'var(--sidebar-text)' }}>{user?.name}</div>
+                <div className="sidebar-user-role">{user?.role}</div>
+              </div>
+              <button className="mobile-menu-btn" onClick={handleLogout} title="Logout" style={{ color: 'var(--sidebar-text-muted)' }}>
+                <LogOut size={18} />
+              </button>
             </div>
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-name">{user?.name}</div>
-              <div className="sidebar-user-role">{user?.role}</div>
-            </div>
-            <button className="mobile-menu-btn" onClick={handleLogout} title="Logout">
-              <LogOut size={18} />
-            </button>
           </div>
         </aside>
 

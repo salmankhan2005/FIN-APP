@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Suspense, useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import ScrollToTop from './components/ScrollToTop';
@@ -205,31 +206,33 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ScrollToTop />
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#ffffff',
-              color: '#0f172a',
-              border: '1px solid rgba(0,0,0,0.08)',
-              borderRadius: '12px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-              fontSize: '13px',
-              maxWidth: '90vw',
-              wordBreak: 'break-word',
-            },
-          }}
-          containerStyle={{ top: 60 }}
-          visibleToasts={2}
-        />
-        <ErrorBoundary>
-          <OnboardingGate />
-        </ErrorBoundary>
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <ScrollToTop />
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: 'var(--bg-card, #ffffff)',
+                color: 'var(--text-primary, #0f172a)',
+                border: '1px solid var(--border-subtle, rgba(0,0,0,0.08))',
+                borderRadius: '12px',
+                boxShadow: 'var(--shadow-md)',
+                fontSize: '13px',
+                maxWidth: '90vw',
+                wordBreak: 'break-word',
+              },
+            }}
+            containerStyle={{ top: 60 }}
+            visibleToasts={2}
+          />
+          <ErrorBoundary>
+            <OnboardingGate />
+          </ErrorBoundary>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

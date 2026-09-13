@@ -112,6 +112,25 @@ const prisma = new PrismaClient();
 
 async function syncDatabaseSchema() {
   try {
+    // ── User table missing columns ────────────────────────────────────────────
+    const userCols = [
+      { col: 'agentId',   type: 'TEXT' },
+      { col: 'adminId',   type: 'TEXT' },
+      { col: 'creatorId', type: 'TEXT' },
+    ];
+    for (const item of userCols) {
+      try {
+        await prisma.$executeRawUnsafe(
+          `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "${item.col}" ${item.type};`
+        );
+      } catch (_) {}
+    }
+    // Ensure indexes exist on User
+    try { await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "User_adminId_idx" ON "User"("adminId");`); } catch (_) {}
+    try { await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "User_role_idx"    ON "User"("role");`); } catch (_) {}
+    console.log('✅ User schema columns verified');
+
+    // ── Customer table missing columns ────────────────────────────────────────
     const columns = [
       'photoUrl',
       'jaminName',
@@ -138,6 +157,16 @@ async function syncDatabaseSchema() {
         } catch (_) {}
       }
     }
+    // Customer adminId / creatorId
+    for (const col of ['adminId', 'creatorId']) {
+      try { await prisma.$executeRawUnsafe(`ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "${col}" TEXT;`); } catch (_) {}
+    }
+    // Customer GPS
+    for (const item of [{ col: 'latitude', type: 'DOUBLE PRECISION' }, { col: 'longitude', type: 'DOUBLE PRECISION' }]) {
+      try { await prisma.$executeRawUnsafe(`ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "${item.col}" ${item.type};`); } catch (_) {}
+    }
+    // Customer notificationPref
+    try { await prisma.$executeRawUnsafe(`ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "notificationPref" TEXT DEFAULT 'BOTH';`); } catch (_) {}
     console.log('✅ Customer & Jamin schema columns verified');
 
     // Repayment table schema updates for Weekly & Daily Carry-Forward
@@ -166,6 +195,19 @@ async function syncDatabaseSchema() {
       }
     }
     console.log('✅ Repayment carry-forward columns verified');
+
+    // ── Loan table missing columns ────────────────────────────────────────────
+    const loanCols = [
+      { col: 'adminId',              type: 'TEXT' },
+      { col: 'creatorId',            type: 'TEXT' },
+      { col: 'interestCollected',    type: 'DOUBLE PRECISION DEFAULT 0' },
+      { col: 'outstandingPrincipal', type: 'DOUBLE PRECISION' },
+    ];
+    for (const item of loanCols) {
+      try { await prisma.$executeRawUnsafe(`ALTER TABLE "Loan" ADD COLUMN IF NOT EXISTS "${item.col}" ${item.type};`); } catch (_) {}
+    }
+    console.log('✅ Loan schema columns verified');
+
   } catch (err) {
     console.warn('⚠️ Schema check note:', err.message);
   }

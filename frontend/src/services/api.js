@@ -127,7 +127,7 @@ export const authAPI = {
 
 // ─── Users ────────────────────────────────────────────────────────────────────
 export const usersAPI = {
-  list: (params) => apiCache.getOrFetch('/users', params, () => api.get('/users', { params }).then(extractData), 30000),
+  list: (params) => apiCache.getOrFetch('/users', params, () => api.get('/users', { params }).then(extractData), 60000),
   create: (data) => api.post('/users', data).then(extractData).then(res => { apiCache.invalidate('users'); return res; }),
   update: (id, data) => api.patch(`/users/${id}`, data).then(extractData).then(res => { apiCache.invalidate('users'); return res; }),
   changePassword: (id, data) => api.patch(`/users/${id}/password`, data).then(extractData),
@@ -136,11 +136,11 @@ export const usersAPI = {
 
 // ─── Customers ────────────────────────────────────────────────────────────────
 export const customersAPI = {
-  list: (params) => apiCache.getOrFetch('/customers', params, () => api.get('/customers', { params }).then(extractData), 15000),
+  list: (params) => apiCache.getOrFetch('/customers', params, () => api.get('/customers', { params }).then(extractData), 30000),
   listWithMeta: (params) => apiCache.getOrFetch('/customers_meta', params, () => api.get('/customers', { params }).then(res => ({
     data: res.data?.data || [],
     meta: res.data?.meta || { total: 0, page: 1, limit: 20, totalPages: 1 }
-  })), 15000),
+  })), 30000),
   get: (id) => api.get(`/customers/${id}`).then(extractData),
   create: (data) => api.post('/customers', data).then(extractData).then(res => {
     apiCache.invalidate('customers');
@@ -165,11 +165,11 @@ export const customersAPI = {
 
 // ─── Loans ────────────────────────────────────────────────────────────────────
 export const loansAPI = {
-  list: (params) => apiCache.getOrFetch('/loans', params, () => api.get('/loans', { params }).then(extractData), 15000),
+  list: (params) => apiCache.getOrFetch('/loans', params, () => api.get('/loans', { params }).then(extractData), 30000),
   listWithMeta: (params) => apiCache.getOrFetch('/loans_meta', params, () => api.get('/loans', { params }).then(res => ({
     data: res.data?.data || [],
     meta: res.data?.meta || { total: 0, page: 1, limit: 20, totalPages: 1 }
-  })), 15000),
+  })), 30000),
   get: (id) => api.get(`/loans/${id}`).then(extractData),
   create: (data) => api.post('/loans', data).then(extractData).then(res => {
     apiCache.invalidate('loans');
@@ -226,15 +226,15 @@ export const paymentsAPI = {
 export const dashboardAPI = {
   summary: (force = false) => {
     if (force) apiCache.invalidate('/dashboard/summary');
-    return apiCache.getOrFetch('/dashboard/summary', {}, () => api.get('/dashboard/summary').then(extractData), 15000);
+    return apiCache.getOrFetch('/dashboard/summary', {}, () => api.get('/dashboard/summary').then(extractData), 60000);
   },
   dataSummary: () => api.get('/dashboard/data-summary').then(extractData),
   exportData: () => api.get('/dashboard/export-data').then(extractData),
   agent: (id, force = false) => {
     if (force) apiCache.invalidate('/dashboard/agent');
-    return apiCache.getOrFetch('/dashboard/agent', { agentId: id }, () => api.get('/dashboard/agent', { params: { agentId: id } }).then(extractData), 15000);
+    return apiCache.getOrFetch('/dashboard/agent', { agentId: id }, () => api.get('/dashboard/agent', { params: { agentId: id } }).then(extractData), 60000);
   },
-  profit: (params) => apiCache.getOrFetch('/dashboard/profit', params, () => api.get('/dashboard/profit', { params }).then(extractData), 20000),
+  profit: (params) => apiCache.getOrFetch('/dashboard/profit', params, () => api.get('/dashboard/profit', { params }).then(extractData), 60000),
   resetAllData: () => api.post('/dashboard/reset-all-data').then(extractData).then(res => {
     apiCache.clearAll();
     return res;

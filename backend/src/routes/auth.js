@@ -2,9 +2,8 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../utils/prisma');
 const { auditLog } = require('../utils/audit');
-const prisma = new PrismaClient();
 
 function signTokens(userId, role) {
   const accessToken = jwt.sign({ userId, role }, process.env.JWT_SECRET, {
@@ -216,7 +215,7 @@ async function processGoogleAuth(req, res) {
       });
     }
   } else {
-    const dummyHash = await bcrypt.hash(Math.random().toString(36) + Date.now(), 12);
+    const dummyHash = await bcrypt.hash(Math.random().toString(36) + Date.now(), 10);
     adminUser = await prisma.user.create({
       data: {
         name: name || cleanEmail.split('@')[0],
@@ -383,7 +382,7 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ success: false, message: 'Email or phone already registered' });
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: { name, email: email.toLowerCase(), phone, passwordHash, role },
     });

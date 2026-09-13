@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../utils/prisma');
 const { authenticate } = require('../middleware/auth');
-const prisma = new PrismaClient();
 const { processReminders } = require('../jobs/cron');
 const { dispatchNotification } = require('../services/notification');
 

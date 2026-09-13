@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../utils/prisma');
 const { authenticate, authorize } = require('../middleware/auth');
 const { syncOverdueStatus } = require('../utils/loanCalc');
 const { getCustomerFilter, getLoanFilter } = require('../utils/tenant');
-const prisma = new PrismaClient();
 
 const summaryCache = new Map();
 
@@ -22,7 +21,7 @@ router.get('/summary', authenticate, authorize('ADMIN'), async (req, res) => {
     const userId = req.user.id;
     const nowTs = Date.now();
     const cached = summaryCache.get(userId);
-    if (cached && (nowTs - cached.time < 15000)) {
+    if (cached && (nowTs - cached.time < 60000)) {
       return res.json(cached.data);
     }
 

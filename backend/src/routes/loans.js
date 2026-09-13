@@ -1,11 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../utils/prisma');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../utils/audit');
 const { generateLoanNumber, syncOverdueStatus } = require('../utils/loanCalc');
 const { getLoanFilter, assertOwnership } = require('../utils/tenant');
-const prisma = new PrismaClient();
 
 const round2 = (n) => Math.round(n * 100) / 100;
 

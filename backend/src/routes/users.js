@@ -1,11 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../utils/prisma');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../utils/audit');
 const { getUserFilter, isLegacyAdmin, assertOwnership } = require('../utils/tenant');
-const prisma = new PrismaClient();
 
 // GET /api/users — Admin only
 router.get('/', authenticate, authorize('ADMIN'), async (req, res) => {

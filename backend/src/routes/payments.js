@@ -1,11 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../utils/prisma');
 const { authenticate } = require('../middleware/auth');
 const { auditLog } = require('../utils/audit');
 const { sendSMS } = require('../utils/sms');
 const { sendWhatsAppMessage } = require('../services/whatsappClient');
-const prisma = new PrismaClient();
 
 const dashboardRouter = require('./dashboard');
 

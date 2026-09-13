@@ -170,7 +170,7 @@ function OnboardingGate() {
   return (
     <>
       {step === STEP_SPLASH && (
-        <SplashScreen onFinish={handleSplashFinish} duration={1800} />
+        <SplashScreen onFinish={handleSplashFinish} duration={800} />
       )}
       {step === STEP_ONBOARDING && (
         <Suspense fallback={<LoadingFallback />}>

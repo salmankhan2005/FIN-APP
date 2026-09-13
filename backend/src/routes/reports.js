@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../utils/prisma');
 const { authenticate, authorize } = require('../middleware/auth');
 const { syncOverdueStatus } = require('../utils/loanCalc');
 const { getLoanFilter, getCustomerFilter, assertOwnership } = require('../utils/tenant');
-const prisma = new PrismaClient();
 
 // GET /api/reports/defaulters
 router.get('/defaulters', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => {

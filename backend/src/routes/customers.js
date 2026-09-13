@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../utils/prisma');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../utils/audit');
 const { getCustomerFilter, assertOwnership } = require('../utils/tenant');
-const prisma = new PrismaClient();
 
 // GET /api/customers
 router.get('/', authenticate, async (req, res) => {
@@ -183,7 +182,7 @@ router.post('/', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => 
           // Email belongs to an ADMIN or AGENT — don't block, just ignore the email
           // We'll generate a unique placeholder email for this customer's user account
           const bcrypt = require('bcryptjs');
-          const passwordHash = await bcrypt.hash(trimmedPhone, 12);
+          const passwordHash = await bcrypt.hash(trimmedPhone, 10);
           user = await prisma.user.create({
             data: {
               name: trimmedName,
@@ -199,7 +198,7 @@ router.post('/', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => 
 
     if (!user) {
       const bcrypt = require('bcryptjs');
-      const passwordHash = await bcrypt.hash(trimmedPhone, 12);
+      const passwordHash = await bcrypt.hash(trimmedPhone, 10);
       user = await prisma.user.create({
         data: {
           name: trimmedName,
@@ -394,7 +393,7 @@ router.post('/:id/credentials', authenticate, authorize('ADMIN', 'AGENT'), async
     }
 
     const bcrypt = require('bcryptjs');
-    const passwordHash = await bcrypt.hash(password.trim(), 12);
+    const passwordHash = await bcrypt.hash(password.trim(), 10);
 
     const targetPhone = phone?.trim() || customer.phone;
     const targetEmail = email?.trim() || customer.email || `${targetPhone}@loanflow.local`;

@@ -1,23 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../utils/prisma');
 const { authenticate } = require('../middleware/auth');
 const { syncOverdueStatus } = require('../utils/loanCalc');
 const { getLoanFilter } = require('../utils/tenant');
-const prisma = new PrismaClient();
 
 const round2 = (n) => Math.round(n * 100) / 100;
 
-function getBatchSize(tenureUnit) {
-  if (tenureUnit === 'WEEKS') return 52;
-  if (tenureUnit === 'MONTHS') return 12;
-  return 365;
-}
+// Rate-limit autoExtend so it only runs every 10 minutes, not on every request
+let lastAutoExtendTs = 0;
 
 /**
  * Auto-extend installments for active loans that are running low.
  */
 async function autoExtendActiveLoans(loanFilter = null) {
+  const now = Date.now();
+  if (now - lastAutoExtendTs < 10 * 60 * 1000) return; // run at most every 10 minutes
+  lastAutoExtendTs = now;
+
+  function getBatchSize(tenureUnit) {
+    if (tenureUnit === 'WEEKS') return 52;
+    if (tenureUnit === 'MONTHS') return 12;
+    return 365;
+  }
   const where = { status: 'ACTIVE' };
   if (loanFilter) {
     where.AND = [loanFilter];

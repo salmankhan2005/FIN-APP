@@ -41,7 +41,7 @@ app.use(cors({
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(morgan('dev'));
+if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -107,8 +107,7 @@ app.use((req, res) => {
 // ─── Start ────────────────────────────────────────────────────────────────────
 const { seedAdmin } = require('./src/utils/seed');
 const { startCronJobs } = require('./src/jobs/cron');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('./src/utils/prisma');
 
 async function syncDatabaseSchema() {
   try {

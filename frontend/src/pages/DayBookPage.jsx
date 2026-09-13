@@ -5,6 +5,7 @@ import {
   BookOpen, Calendar, Plus, Trash2, IndianRupee, ArrowDownLeft, ArrowUpRight,
   Receipt, Wallet, RefreshCw, CheckCircle, FileSpreadsheet, AlertCircle
 } from 'lucide-react';
+import { DayBookIllustration, EmptyRecordsIllustration } from '../components/Illustrations';
 import toast from 'react-hot-toast';
 
 function fmt(val) {
@@ -214,33 +215,37 @@ export default function DayBookPage() {
         marginBottom: 24,
         boxShadow: '0 10px 25px -5px rgba(67, 56, 202, 0.3)',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 20
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
-          <div>
-            <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#c7d2fe', fontWeight: 700 }}>
-              Closing Cash In Hand (கையில் உள்ள ரொக்கம்)
-            </div>
-            <div style={{ fontSize: '2.4rem', fontWeight: 900, marginTop: 4, letterSpacing: '-0.02em' }}>
-              {fmt(summary.closingBalance)}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: '12.5px', color: '#e0e7ff' }}>
-              <span>Opening: {fmt(summary.openingBalance)}</span>
-              <span>•</span>
-              <span style={{ color: summary.netCashFlow >= 0 ? '#4ade80' : '#f87171', fontWeight: 700 }}>
-                Net Flow: {summary.netCashFlow >= 0 ? '+' : ''}{fmt(summary.netCashFlow)}
-              </span>
-            </div>
+        <div style={{ position: 'relative', zIndex: 1, flex: '1 1 280px' }}>
+          <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#c7d2fe', fontWeight: 700 }}>
+            Closing Cash In Hand (கையில் உள்ள ரொக்கம்)
+          </div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, marginTop: 4, letterSpacing: '-0.02em' }}>
+            {fmt(summary.closingBalance)}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: '12.5px', color: '#e0e7ff', flexWrap: 'wrap' }}>
+            <span>Opening: {fmt(summary.openingBalance)}</span>
+            <span>•</span>
+            <span style={{ color: summary.netCashFlow >= 0 ? '#4ade80' : '#f87171', fontWeight: 700 }}>
+              Net Flow: {summary.netCashFlow >= 0 ? '+' : ''}{fmt(summary.netCashFlow)}
+            </span>
           </div>
 
           <button
             onClick={() => setShowOpeningModal(true)}
             style={{
+              marginTop: 14,
               background: 'rgba(255, 255, 255, 0.15)',
               border: '1px solid rgba(255, 255, 255, 0.25)',
               color: '#fff',
               borderRadius: 8,
-              padding: '6px 12px',
+              padding: '6px 14px',
               fontSize: '12px',
               fontWeight: 600,
               cursor: 'pointer',
@@ -249,6 +254,11 @@ export default function DayBookPage() {
           >
             Edit Opening Cash
           </button>
+        </div>
+
+        {/* 2D Vector Animated Ledger Illustration */}
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'center' }}>
+          <DayBookIllustration width={150} height={110} />
         </div>
       </div>
 
@@ -321,8 +331,9 @@ export default function DayBookPage() {
           {loading ? (
             <div style={{ padding: '30px 0', textAlign: 'center', color: '#94a3b8' }}>Loading collections...</div>
           ) : !data?.collections?.length ? (
-            <div style={{ padding: '30px 0', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-              No collections recorded on this date.
+            <div style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8', fontSize: '13px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <EmptyRecordsIllustration width={100} height={70} />
+              <span>No collections recorded on this date.</span>
             </div>
           ) : (
             <div style={{ maxHeight: 380, overflowY: 'auto' }}>
@@ -375,8 +386,9 @@ export default function DayBookPage() {
           {loading ? (
             <div style={{ padding: '30px 0', textAlign: 'center', color: '#94a3b8' }}>Loading expenses...</div>
           ) : !data?.expenses?.length ? (
-            <div style={{ padding: '30px 0', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-              No expenses recorded for this date.
+            <div style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8', fontSize: '13px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <EmptyRecordsIllustration width={100} height={70} />
+              <span>No expenses recorded for this date.</span>
             </div>
           ) : (
             <div style={{ maxHeight: 380, overflowY: 'auto' }}>

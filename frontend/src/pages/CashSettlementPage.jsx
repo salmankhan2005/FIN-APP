@@ -5,6 +5,7 @@ import {
   Banknote, Users, Calendar, CheckCircle2, AlertTriangle, Clock,
   ShieldCheck, ArrowRight, RefreshCw, KeyRound, Check
 } from 'lucide-react';
+import { CashHandoverIllustration, EmptyRecordsIllustration } from '../components/Illustrations';
 import toast from 'react-hot-toast';
 
 function fmt(val) {
@@ -262,22 +263,32 @@ export default function CashSettlementPage() {
             </span>
           </div>
 
-          {/* Big Amount Due Display */}
+          {/* Big Amount Due Display with 2D Vector Illustration */}
           <div style={{
             background: 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)',
             color: '#fff',
-            borderRadius: 12,
+            borderRadius: 14,
             padding: '20px',
-            marginBottom: 20
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            boxShadow: '0 8px 20px -4px rgba(6, 95, 70, 0.3)'
           }}>
-            <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#a7f3d0' }}>
-              Calculated Net Cash Due (வரவேண்டிய ரொக்கம்)
+            <div>
+              <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#a7f3d0', fontWeight: 700 }}>
+                Calculated Net Cash Due (வரவேண்டிய ரொக்கம்)
+              </div>
+              <div style={{ fontSize: '2.2rem', fontWeight: 900, marginTop: 4 }}>
+                {fmt(expectedCashDue)}
+              </div>
+              <div style={{ fontSize: '12px', color: '#d1fae5', marginTop: 6 }}>
+                Gross {fmt(totalCollected)} - Deductions {fmt(totalDeductions)}
+              </div>
             </div>
-            <div style={{ fontSize: '2.2rem', fontWeight: 900, marginTop: 4 }}>
-              {fmt(expectedCashDue)}
-            </div>
-            <div style={{ fontSize: '12px', color: '#d1fae5', marginTop: 6 }}>
-              Total Collected ({fmt(totalCollected)}) - Deductions ({fmt(totalDeductions)})
+            <div style={{ flexShrink: 0 }}>
+              <CashHandoverIllustration width={120} height={90} />
             </div>
           </div>
 
@@ -569,8 +580,9 @@ export default function CashSettlementPage() {
         {loadingHistory ? (
           <div style={{ textAlign: 'center', padding: '30px 0', color: '#94a3b8' }}>Loading settlement history...</div>
         ) : history.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px 0', color: '#94a3b8', fontSize: '13px' }}>
-            No settlement records found.
+          <div style={{ textAlign: 'center', padding: '24px 0', color: '#94a3b8', fontSize: '13px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <EmptyRecordsIllustration width={100} height={70} />
+            <span>No settlement records found.</span>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, CheckCircle, Clock, AlertTriangle, HandCoins, X, Banknote, Lock, Trash2, User, ShieldCheck, Phone, Eye, FileText, Calendar, ArrowRight, CornerDownRight, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { isPdfDocument } from '../utils/imageCompressor';
 import { useAuth } from '../contexts/AuthContext';
+import { TopUpIllustration } from '../components/Illustrations';
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 const fmtShort = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '-';
@@ -999,17 +1000,15 @@ export default function LoanDetail() {
       {topUpModal && (
         <div className="modal-overlay" style={{ zIndex: 10001 }} onClick={() => setTopUpModal(false)}>
           <div className="card" style={{ maxWidth: 480, width: '92vw', padding: 24 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 8, background: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <RefreshCw size={18} />
-                </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <TopUpIllustration width={48} height={42} />
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Top-Up Loan Rollover</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Renew loan & disburse net fresh cash</div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Top-Up Loan Rollover</h3>
+                  <div style={{ fontSize: '11.5px', color: '#64748b' }}>Renew loan & disburse net fresh cash</div>
                 </div>
               </div>
-              <button type="button" onClick={() => setTopUpModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              <button type="button" onClick={() => setTopUpModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}>
                 <X size={18} />
               </button>
             </div>

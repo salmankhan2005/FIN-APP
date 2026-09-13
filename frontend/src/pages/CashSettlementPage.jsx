@@ -77,7 +77,8 @@ export default function CashSettlementPage() {
     try {
       setLoadingHistory(true);
       const res = await settlementsAPI.list({ limit: 20 });
-      setHistory(Array.isArray(res) ? res : (res?.settlements || []));
+      // Backend returns either an array or {data: [...], meta: ...}
+      setHistory(Array.isArray(res) ? res : (res?.data || res?.settlements || []));
     } catch (err) {
       console.error(err);
     } finally {
@@ -118,13 +119,14 @@ export default function CashSettlementPage() {
       setSubmitting(true);
       await settlementsAPI.close({
         agentId: selectedAgentId,
-        settlementDate: selectedDate,
+        date: selectedDate,
         fuelExpense: fExpense,
         commission: comm,
         otherDeductions: otherDed,
         actualCashReceived: receivedCash,
         signOffOtp,
-        notes
+        notes,
+        lockBatch: true
       });
 
       toast.success('Cash settlement verified and locked for the day!');

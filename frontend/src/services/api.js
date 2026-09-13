@@ -250,9 +250,11 @@ export const dashboardAPI = {
 
 // ─── Settlements (Evening Cash Handover) ──────────────────────────────────────
 export const settlementsAPI = {
-  todaySummary: (params) => api.get('/settlements/today-summary', { params }).then(extractData),
-  list: (params) => api.get('/settlements', { params }).then(extractData),
-  close: (data) => api.post('/settlements/close', data).then(extractData),
+  todaySummary: (params) => api.get('/settlements/summary', { params }).then(extractData),
+  list: (params) => api.get('/settlements/history', { params }).then(extractData),
+  reconcile: (data) => api.post('/settlements/reconcile', data).then(extractData),
+  // Legacy alias
+  close: (data) => api.post('/settlements/reconcile', { ...data, lockBatch: true }).then(extractData),
 };
 
 // ─── Day Book (Roznamcha / நாட்குறிப்பு) ──────────────────────────────────────────

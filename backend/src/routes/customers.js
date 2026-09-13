@@ -638,4 +638,135 @@ router.post('/:id/credentials', authenticate, authorize('ADMIN', 'AGENT'), async
   }
 });
 
+// GET /api/customers/check-guarantor — Jamin (Guarantor) Cross-Debt Network Detection
+// Alerts admin if proposed guarantor already backs 3+ active loans or has overdue loans
+router.get('/check-guarantor', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => {
+  try {
+    const { phone, jaminPhone, customerId } = req.query;
+
+    // Search by guarantor's phone number
+    const searchPhone = jaminPhone || phone;
+    if (!searchPhone) {
+      return res.status(400).json({ success: false, message: 'jaminPhone or phone query parameter is required' });
+    }
+
+    // Find all customers whose jamin phone matches (they are acting as guarantors)
+    const guarantorCustomers = await prisma.customer.findMany({
+      where: {
+        jaminPhone: { contains: searchPhone },
+        isActive: true
+      },
+      select: {
+        id: true,
+        name: true,
+        jaminName: true,
+        jaminPhone: true,
+        jaminRelationship: true,
+        loans: {
+          where: { status: 'ACTIVE' },
+          select: {
+            id: true,
+            loanNumber: true,
+            principalAmount: true,
+            status: true,
+            startDate: true
+          }
+        }
+      }
+    });
+
+    // Find if this phone number is a borrower with overdue loans
+    const borrowerCustomers = await prisma.customer.findMany({
+      where: {
+        phone: { contains: searchPhone },
+        isActive: true,
+        ...(customerId ? { id: { not: customerId } } : {})
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        loans: {
+          where: { status: { in: ['ACTIVE', 'DEFAULTED'] } },
+          select: {
+            id: true,
+            loanNumber: true,
+            principalAmount: true,
+            status: true,
+            repayments: {
+              where: { status: 'OVERDUE' },
+              select: { id: true, dueDate: true, dueAmount: true, paidAmount: true }
+            }
+          }
+        }
+      }
+    });
+
+    // Count how many active loans this person is guaranteeing
+    const guaranteedLoansCount = guarantorCustomers.reduce(
+      (sum, c) => sum + (c.loans?.length || 0), 0
+    );
+
+    // Check if guarantor has their own overdue loans
+    const borrowerOverdueLoans = borrowerCustomers.flatMap(c =>
+      (c.loans || []).filter(l => l.repayments && l.repayments.length > 0)
+    );
+    const hasOwnOverdueLoans = borrowerOverdueLoans.length > 0;
+    const hasOwnActiveLoan = borrowerCustomers.some(c => c.loans?.some(l => l.status === 'ACTIVE'));
+
+    const MAX_GUARANTEED_LOANS = 3;
+    const alerts = [];
+    const warnings = [];
+
+    if (guaranteedLoansCount >= MAX_GUARANTEED_LOANS) {
+      alerts.push(`⚠️ This guarantor is already backing ${guaranteedLoansCount} active loan(s) — circular debt risk detected!`);
+    } else if (guaranteedLoansCount > 0) {
+      warnings.push(`ℹ️ This guarantor is currently backing ${guaranteedLoansCount} active loan(s).`);
+    }
+
+    if (hasOwnOverdueLoans) {
+      alerts.push(`🚨 This person has overdue loans as a borrower — high-risk guarantor!`);
+    }
+
+    if (hasOwnActiveLoan && guaranteedLoansCount >= MAX_GUARANTEED_LOANS) {
+      alerts.push(`🔴 Circular debt loop detected: person is both a borrower and over-leveraged as guarantor.`);
+    }
+
+    const isHighRisk = alerts.length > 0;
+    const requiresApproval = guaranteedLoansCount >= MAX_GUARANTEED_LOANS || hasOwnOverdueLoans;
+
+    res.json({
+      success: true,
+      data: {
+        searchPhone,
+        guaranteedLoansCount,
+        hasOwnActiveLoan,
+        hasOwnOverdueLoans,
+        isHighRisk,
+        requiresApproval,
+        maxAllowed: MAX_GUARANTEED_LOANS,
+        alerts,
+        warnings,
+        guarantorRecords: guarantorCustomers.map(c => ({
+          id: c.id,
+          borrowerName: c.name,
+          jaminName: c.jaminName,
+          relationship: c.jaminRelationship,
+          activeLoansGuaranteed: c.loans?.length || 0
+        })),
+        borrowerRecords: borrowerCustomers.map(c => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone,
+          activeLoans: c.loans?.filter(l => l.status === 'ACTIVE').length || 0,
+          overdueInstallments: c.loans?.reduce((sum, l) => sum + (l.repayments?.length || 0), 0) || 0
+        }))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
+

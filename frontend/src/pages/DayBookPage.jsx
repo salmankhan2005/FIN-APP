@@ -456,7 +456,7 @@ export default function DayBookPage() {
                   required
                   value={openingInput}
                   onChange={(e) => setOpeningInput(e.target.value)}
-                  placeholder="e.g. 25000"
+                  placeholder="0.00"
                   className="form-control"
                   style={{ width: '100%' }}
                 />
@@ -470,7 +470,7 @@ export default function DayBookPage() {
                   type="text"
                   value={openingNotes}
                   onChange={(e) => setOpeningNotes(e.target.value)}
-                  placeholder="e.g. Cash carried over from safe"
+                  placeholder="Optional notes (e.g. Carried forward cash in safe)"
                   className="form-control"
                   style={{ width: '100%' }}
                 />
@@ -544,7 +544,7 @@ export default function DayBookPage() {
                   required
                   value={expenseAmount}
                   onChange={(e) => setExpenseAmount(e.target.value)}
-                  placeholder="e.g. 250"
+                  placeholder="0.00"
                   className="form-control"
                   style={{ width: '100%' }}
                 />
@@ -559,7 +559,7 @@ export default function DayBookPage() {
                   required
                   value={expenseDesc}
                   onChange={(e) => setExpenseDesc(e.target.value)}
-                  placeholder="e.g. Collection agent bike fuel"
+                  placeholder="Enter expense details (e.g. Field agent fuel allowance)"
                   className="form-control"
                   style={{ width: '100%' }}
                 />

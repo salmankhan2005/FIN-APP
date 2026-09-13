@@ -1052,7 +1052,7 @@ export default function LoanDetail() {
                   min={(topUpEligibility?.totalOldBalanceDeduction || outstanding) + 1}
                   value={topUpForm.newPrincipalAmount}
                   onChange={e => setTopUpForm(f => ({ ...f, newPrincipalAmount: e.target.value }))}
-                  placeholder="e.g. 50000"
+                  placeholder="0.00"
                   className="form-control"
                   style={{ width: '100%', fontSize: 15, fontWeight: 700 }}
                 />
@@ -1079,6 +1079,7 @@ export default function LoanDetail() {
                     type="number"
                     value={topUpForm.tenure}
                     onChange={e => setTopUpForm(f => ({ ...f, tenure: e.target.value }))}
+                    placeholder="10"
                     className="form-control"
                     style={{ width: '100%' }}
                   />
@@ -1092,7 +1093,7 @@ export default function LoanDetail() {
                     type="number"
                     value={topUpForm.processingFee}
                     onChange={e => setTopUpForm(f => ({ ...f, processingFee: e.target.value }))}
-                    placeholder="0"
+                    placeholder="0.00"
                     className="form-control"
                     style={{ width: '100%' }}
                   />

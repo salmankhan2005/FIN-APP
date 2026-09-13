@@ -338,7 +338,7 @@ export default function CashSettlementPage() {
                   step="0.01"
                   value={fuelExpense}
                   onChange={(e) => setFuelExpense(e.target.value)}
-                  placeholder="e.g. 150"
+                  placeholder="0.00"
                   className="form-control"
                   style={{ width: '100%' }}
                   disabled={summary?.isAlreadySettled}
@@ -354,7 +354,7 @@ export default function CashSettlementPage() {
                   step="0.01"
                   value={commission}
                   onChange={(e) => setCommission(e.target.value)}
-                  placeholder="e.g. 200"
+                  placeholder="0.00"
                   className="form-control"
                   style={{ width: '100%' }}
                   disabled={summary?.isAlreadySettled}
@@ -371,7 +371,7 @@ export default function CashSettlementPage() {
                 step="0.01"
                 value={otherDeductions}
                 onChange={(e) => setOtherDeductions(e.target.value)}
-                placeholder="e.g. 50"
+                placeholder="0.00"
                 className="form-control"
                 style={{ width: '100%' }}
                 disabled={summary?.isAlreadySettled}
@@ -389,7 +389,7 @@ export default function CashSettlementPage() {
                 required
                 value={actualCashReceived}
                 onChange={(e) => setActualCashReceived(e.target.value)}
-                placeholder="Enter physical cash counted"
+                placeholder="0.00"
                 className="form-control"
                 style={{ width: '100%', fontSize: '15px', fontWeight: 700, borderColor: diff === 0 ? '#10b981' : '#f59e0b' }}
                 disabled={summary?.isAlreadySettled}
@@ -429,7 +429,7 @@ export default function CashSettlementPage() {
                   type="password"
                   value={signOffOtp}
                   onChange={(e) => setSignOffOtp(e.target.value)}
-                  placeholder="e.g. 1234"
+                  placeholder="Enter 4-digit PIN"
                   className="form-control"
                   style={{ width: '100%' }}
                   disabled={summary?.isAlreadySettled}
@@ -444,7 +444,7 @@ export default function CashSettlementPage() {
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Verified by cashier"
+                  placeholder="Optional remarks (e.g. Verified & closed)"
                   className="form-control"
                   style={{ width: '100%' }}
                   disabled={summary?.isAlreadySettled}

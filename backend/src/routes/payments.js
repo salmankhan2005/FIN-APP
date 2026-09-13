@@ -7,6 +7,7 @@ const { sendSMS } = require('../utils/sms');
 const { sendWhatsAppMessage } = require('../services/whatsappClient');
 
 const dashboardRouter = require('./dashboard');
+const { getLoanFilter } = require('../utils/tenant');
 
 // round2 MUST be defined before any route that uses it
 const round2 = (num) => Math.round(num * 100) / 100;
@@ -648,6 +649,8 @@ router.get('/', authenticate, async (req, res) => {
       } else {
         where.id = 'non-existent-id';
       }
+    } else {
+      where.repayment = { loan: getLoanFilter(req.user) };
     }
 
     const [payments, total] = await Promise.all([

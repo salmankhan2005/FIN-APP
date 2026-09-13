@@ -132,16 +132,11 @@ function OnboardingGate() {
 
   const handleSelectRole = (role) => {
     setSelectedRole(role);
-    // If the chosen role is already logged in (active in-memory user or stored session), redirect directly!
-    if (switchOrRestoreRole && switchOrRestoreRole(role)) {
-      setStep(STEP_APP);
-      return;
-    }
     if (user && ((role === 'ADMIN' && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) || user.role === role)) {
       setStep(STEP_APP);
       return;
     }
-    // Not logged in -> proceed to login page
+    // Not currently logged in as this role -> proceed to login page to enter credentials
     setStep(STEP_LOGIN);
   };
 

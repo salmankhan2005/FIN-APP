@@ -207,6 +207,67 @@ async function syncDatabaseSchema() {
     }
     console.log('✅ Loan schema columns verified');
 
+    // ── Workspace isolation: link legacy unassigned records & deduplicate admin accounts
+    try {
+      const logs = await prisma.auditLog.findMany({
+        where: { action: { in: ['CREATE_CUSTOMER', 'CREATE_LOAN'] } }
+      });
+      for (const log of logs) {
+        if (log.action === 'CREATE_CUSTOMER' && log.entityId && log.userId) {
+          await prisma.customer.updateMany({
+            where: { id: log.entityId, adminId: null },
+            data: { adminId: log.userId, creatorId: log.userId }
+          });
+        }
+        if (log.action === 'CREATE_LOAN' && log.entityId && log.userId) {
+          await prisma.loan.updateMany({
+            where: { id: log.entityId, adminId: null },
+            data: { adminId: log.userId, creatorId: log.userId }
+          });
+        }
+      }
+
+      const allAdmins = await prisma.user.findMany({
+        where: { role: 'ADMIN' },
+        orderBy: { createdAt: 'asc' }
+      });
+      const byKey = {};
+      for (const u of allAdmins) {
+        const key = (u.email || u.phone || '').toLowerCase().trim();
+        if (!key) continue;
+        if (!byKey[key]) byKey[key] = [];
+        byKey[key].push(u);
+      }
+      for (const [, accounts] of Object.entries(byKey)) {
+        if (accounts.length > 1) {
+          const primary = accounts[0];
+          const dupIds = accounts.slice(1).map(a => a.id);
+          await prisma.customer.updateMany({ where: { adminId: { in: dupIds } }, data: { adminId: primary.id } });
+          await prisma.customer.updateMany({ where: { creatorId: { in: dupIds } }, data: { creatorId: primary.id } });
+          await prisma.loan.updateMany({ where: { adminId: { in: dupIds } }, data: { adminId: primary.id } });
+          await prisma.loan.updateMany({ where: { creatorId: { in: dupIds } }, data: { creatorId: primary.id } });
+          await prisma.auditLog.updateMany({ where: { userId: { in: dupIds } }, data: { userId: primary.id } });
+          await prisma.refreshToken.updateMany({ where: { userId: { in: dupIds } }, data: { userId: primary.id } });
+          await prisma.user.deleteMany({ where: { id: { in: dupIds } } });
+        }
+      }
+
+      const loansWithoutAdmin = await prisma.loan.findMany({
+        where: { adminId: null },
+        include: { customer: true }
+      });
+      for (const l of loansWithoutAdmin) {
+        if (l.customer?.adminId) {
+          await prisma.loan.update({
+            where: { id: l.id },
+            data: { adminId: l.customer.adminId, creatorId: l.customer.creatorId }
+          });
+        }
+      }
+      console.log('✅ Admin workspace isolation synced');
+    } catch (isoErr) {
+      console.warn('⚠️ Workspace isolation sync note:', isoErr.message);
+    }
   } catch (err) {
     console.warn('⚠️ Schema check note:', err.message);
   }

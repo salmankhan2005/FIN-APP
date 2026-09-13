@@ -184,6 +184,9 @@ export function AuthProvider({ children }) {
         }));
       } catch (_) {}
 
+      // Dispatch cache purge so previous admin's cached data is never shown
+      try { window.dispatchEvent(new Event('finova:auth:logout')); } catch (_) {}
+
       setUser(response.user);
       if (response.user.role === 'ADMIN') {
         initFirebaseForSuperAdmin(response.user);
@@ -233,6 +236,9 @@ export function AuthProvider({ children }) {
             user: userObj,
           }));
         } catch (_) {}
+
+        // Dispatch cache purge so previous admin's cached data is never shown
+        try { window.dispatchEvent(new Event('finova:auth:logout')); } catch (_) {}
 
         setUser(userObj);
         if (userObj.role === 'ADMIN') {
@@ -313,13 +319,12 @@ export function AuthProvider({ children }) {
       await signOutFromFirebase();
     } catch (_) {}
 
-    // 3. Clear stored role session if specified or matching current user
-    const targetNorm = (roleToLogout || user?.role) === 'SUPER_ADMIN' || (roleToLogout || user?.role) === 'ADMIN'
-      ? 'ADMIN'
-      : (roleToLogout || user?.role);
-    if (targetNorm) {
-      try { localStorage.removeItem(`finova_session_${targetNorm}`); } catch (_) {}
-    }
+    // 3. Clear all stored role sessions
+    try {
+      localStorage.removeItem('finova_session_ADMIN');
+      localStorage.removeItem('finova_session_AGENT');
+      localStorage.removeItem('finova_session_CUSTOMER');
+    } catch (_) {}
 
     // 4. Clear local state immediately so UI responds instantly
     const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');

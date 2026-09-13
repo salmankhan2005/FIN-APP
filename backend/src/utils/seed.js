@@ -1,15 +1,19 @@
 const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('./prisma');
 
 async function seedAdmin() {
-  const passwordHash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@123456', 12);
+  const passwordHash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@123456', 10);
   
-  // Super Admin Account
+  // Super Admin Account (default system seed only)
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@loanflow.com';
   const adminPhone = process.env.ADMIN_PHONE || '6380372501';
   const existingAdmin = await prisma.user.findFirst({
-    where: { OR: [{ email: adminEmail }, { role: 'ADMIN' }] }
+    where: {
+      OR: [
+        { email: adminEmail },
+        { phone: adminPhone }
+      ]
+    }
   });
 
   if (existingAdmin) {
@@ -36,7 +40,7 @@ async function seedAdmin() {
       }
     });
   }
-  console.log('✅ Admin user verified/seeded:', adminEmail);
+  console.log('✅ Default Admin user verified/seeded:', adminEmail);
 
   // Agent JEEVAA Account
   const agentEmail = 'jeevaamarimuthu8@gmail.com';
@@ -74,4 +78,3 @@ async function seedAdmin() {
 }
 
 module.exports = { seedAdmin };
-

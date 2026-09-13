@@ -50,13 +50,6 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // If this role is already logged in, restore session and redirect immediately
-  useEffect(() => {
-    if (isRoleLoggedIn && isRoleLoggedIn(selectedRole)) {
-      if (switchOrRestoreRole) switchOrRestoreRole(selectedRole);
-    }
-  }, [selectedRole]);
-
   const cfg = roleConfigs[selectedRole] || roleConfigs.ADMIN;
 
   const handleSubmit = async (e) => {

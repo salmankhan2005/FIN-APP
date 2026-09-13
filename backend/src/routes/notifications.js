@@ -4,10 +4,13 @@ const prisma = require('../utils/prisma');
 const { authenticate } = require('../middleware/auth');
 const { processReminders } = require('../jobs/cron');
 const { dispatchNotification } = require('../services/notification');
+const { getLoanFilter, getCustomerFilter } = require('../utils/tenant');
 
 // Get Dashboard Summary
-router.get('/dashboard', async (req, res) => {
+router.get('/dashboard', authenticate, async (req, res) => {
   try {
+    const loanFilter = getLoanFilter(req.user);
+    const customerFilter = getCustomerFilter(req.user);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -16,12 +19,12 @@ router.get('/dashboard', async (req, res) => {
     nextWeek.setDate(today.getDate() + 7);
 
     const [dueToday, dueTomorrow, upcoming, overdue, sent, failed] = await Promise.all([
-      prisma.repayment.count({ where: { status: 'PENDING', dueDate: { gte: today, lt: tomorrow } } }),
-      prisma.repayment.count({ where: { status: 'PENDING', dueDate: { gte: tomorrow, lt: nextWeek } } }), // using nextWeek as "upcoming" for simplicity, or just tomorrow to nextWeek
-      prisma.repayment.count({ where: { status: 'PENDING', dueDate: { gt: tomorrow } } }),
-      prisma.repayment.count({ where: { status: 'PENDING', dueDate: { lt: today } } }),
-      prisma.notificationLog.count({ where: { status: 'SENT' } }),
-      prisma.notificationLog.count({ where: { status: 'FAILED' } }),
+      prisma.repayment.count({ where: { status: 'PENDING', dueDate: { gte: today, lt: tomorrow }, loan: loanFilter } }),
+      prisma.repayment.count({ where: { status: 'PENDING', dueDate: { gte: tomorrow, lt: nextWeek }, loan: loanFilter } }),
+      prisma.repayment.count({ where: { status: 'PENDING', dueDate: { gt: tomorrow }, loan: loanFilter } }),
+      prisma.repayment.count({ where: { status: 'PENDING', dueDate: { lt: today }, loan: loanFilter } }),
+      prisma.notificationLog.count({ where: { status: 'SENT', customer: customerFilter } }),
+      prisma.notificationLog.count({ where: { status: 'FAILED', customer: customerFilter } }),
     ]);
 
     res.json({
@@ -62,10 +65,12 @@ router.put('/settings', async (req, res) => {
 });
 
 // Get Logs/History
-router.get('/history', async (req, res) => {
+router.get('/history', authenticate, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 50;
+    const customerFilter = getCustomerFilter(req.user);
     const logs = await prisma.notificationLog.findMany({
+      where: { customer: customerFilter },
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {

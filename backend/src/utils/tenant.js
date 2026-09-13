@@ -1,48 +1,41 @@
+/**
+ * Tenant & Admin Workspace Isolation Utility
+ * 
+ * Ensures strict multi-tenant data isolation:
+ * Each admin credential operates in their own isolated session and workspace.
+ * An admin CANNOT see or access another admin's user credentials, customers, loans, or reports.
+ */
+
+/**
+ * Legacy admin check.
+ * Strictly false for all standard admin sessions to ensure complete isolation.
+ */
 const isLegacyAdmin = (user) => {
-  if (!user) return false;
-  if (user.role === 'SUPER_ADMIN') return true;
-  const legacyEmails = [
-    'admin@loanflow.com',
-    'salmankhandwork@gmail.com',
-    'salmankhanwork@gmail.com',
-    'samitha0786@gmail.com',
-    'samitha121986@gmail.com',
-    'v4nexustech@gmail.com',
-    'jeevaamarimuthu8@gmail.com'
-  ];
-  return (
-    user.phone === '6380372501' ||
-    user.phone === '09342298949' ||
-    user.phone === '9342298949' ||
-    legacyEmails.includes(user.email?.toLowerCase?.() || '')
-  );
+  return false;
 };
 
 /**
  * Returns the effective admin ID for the requesting user.
- * For ADMIN: their own id.
- * For AGENT: their adminId (the admin they belong to).
+ * - For ADMIN / SUPER_ADMIN: their own id.
+ * - For AGENT: their assigned adminId.
  */
 const resolveAdminId = (user) => {
   if (!user) return null;
-  if (user.role === 'ADMIN') return user.id;
+  if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') return user.id;
   if (user.role === 'AGENT') return user.adminId || null;
   return null;
 };
 
 /**
- * Throws a 403 error if the resource's adminId does not match the
- * requesting user's resolved admin ID.
- * Legacy admins bypass this check and can access all records.
- * Records with null adminId are only accessible to legacy admins.
+ * Enforces ownership: Throws 403 error if the resource's adminId
+ * does not match the requesting user's resolved admin ID.
  *
- * @param {object} resource - The DB record (must have an adminId field)
+ * @param {object} resource - The DB record (with adminId and/or creatorId field)
  * @param {object} user - req.user from auth middleware
  * @param {string} resourceName - Human-readable name for error messages
  */
 const assertOwnership = (resource, user, resourceName = 'Resource') => {
   if (!resource) return; // 404 handled by caller
-  if (isLegacyAdmin(user)) return; // Legacy admin sees everything
 
   const effectiveAdminId = resolveAdminId(user);
   if (!effectiveAdminId) {
@@ -51,31 +44,27 @@ const assertOwnership = (resource, user, resourceName = 'Resource') => {
     throw err;
   }
 
-  // If the record has no adminId it's a legacy unowned record — only legacy admin can touch it
-  if (!resource.adminId) {
-    const err = new Error(`Access denied. This ${resourceName} is not assigned to any admin workspace.`);
-    err.statusCode = 403;
-    throw err;
-  }
-
-  if (resource.adminId !== effectiveAdminId) {
+  const resourceAdminId = resource.adminId || resource.creatorId;
+  if (resourceAdminId && resourceAdminId !== effectiveAdminId) {
     const err = new Error(`Access denied. This ${resourceName} belongs to a different admin workspace.`);
     err.statusCode = 403;
     throw err;
   }
 };
 
+/**
+ * Customer query filter:
+ * - ADMIN: only customers belonging to this admin's workspace (adminId: user.id or creatorId: user.id)
+ * - AGENT: only customers under their admin workspace
+ * - CUSTOMER: only their own customer record
+ */
 const getCustomerFilter = (user) => {
   if (!user) return { id: '__NONE__' };
   if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-    if (isLegacyAdmin(user)) {
-      return {};
-    }
     return {
       OR: [
         { adminId: user.id },
-        { creatorId: user.id },
-        { adminId: null }
+        { creatorId: user.id }
       ]
     };
   }
@@ -102,18 +91,20 @@ const getCustomerFilter = (user) => {
   return { id: '__NONE__' };
 };
 
+/**
+ * Loan query filter:
+ * - ADMIN: only loans belonging to this admin's workspace
+ * - AGENT: only loans under their admin workspace
+ * - CUSTOMER: only their own loans
+ */
 const getLoanFilter = (user) => {
   if (!user) return { id: '__NONE__' };
   if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-    if (isLegacyAdmin(user)) {
-      return {};
-    }
     return {
       OR: [
         { adminId: user.id },
         { creatorId: user.id },
-        { adminId: null },
-        { customer: { OR: [{ adminId: user.id }, { creatorId: user.id }, { adminId: null }] } }
+        { customer: { OR: [{ adminId: user.id }, { creatorId: user.id }] } }
       ]
     };
   }
@@ -143,19 +134,41 @@ const getLoanFilter = (user) => {
   return { id: '__NONE__' };
 };
 
+/**
+ * User / Staff query filter:
+ * - ADMIN: sees ONLY their own user record and agents/users created in their workspace.
+ *   CRITICAL: Never shows other admin credentials!
+ * - AGENT: sees themselves and their admin workspace
+ */
 const getUserFilter = (user) => {
   if (!user) return { id: '__NONE__' };
   if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-    if (isLegacyAdmin(user)) {
-      return {};
-    }
     return {
       OR: [
+        { id: user.id },
         { adminId: user.id },
-        { creatorId: user.id },
-        { adminId: null }
-      ]
+        { creatorId: user.id }
+      ],
+      NOT: {
+        AND: [
+          { role: 'ADMIN' },
+          { id: { not: user.id } }
+        ]
+      }
     };
+  }
+  if (user.role === 'AGENT') {
+    const adminId = user.adminId;
+    if (adminId) {
+      return {
+        OR: [
+          { id: user.id },
+          { id: adminId },
+          { adminId }
+        ]
+      };
+    }
+    return { id: user.id };
   }
   return { id: user.id };
 };
@@ -168,4 +181,3 @@ module.exports = {
   getLoanFilter,
   getUserFilter
 };
-

@@ -251,11 +251,14 @@ export function TourProvider({ children }) {
   const [language, setLanguage] = useState(() => localStorage.getItem('finova_tour_lang') || 'ta'); // 'ta' (Tamil) or 'en' (English)
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [speechRate, setSpeechRate] = useState(0.95);
+  const [speechRate, setSpeechRate] = useState(() => {
+    const saved = localStorage.getItem('finova_tour_speech_rate');
+    return saved ? parseFloat(saved) : 1.5; // Default 1.5x speed
+  });
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
-  // Voice model selection: 'indic-parler' (AI4Bharat Indic-Parler-TTS), 'neural' (Studio HD), or 'synth' (Web Speech API)
-  const [voiceModel, setVoiceModel] = useState(() => localStorage.getItem('finova_tour_voice_model') || 'indic-parler');
+  // Default to neural model (Pallavi in Tamil & Neerja in English)
+  const [voiceModel, setVoiceModel] = useState(() => localStorage.getItem('finova_tour_voice_model') || 'neural');
   const [audioProgress, setAudioProgress] = useState(0);
 
   const utteranceRef = useRef(null);
@@ -282,6 +285,11 @@ export function TourProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('finova_tour_lang', language);
   }, [language]);
+
+  // Save speech rate preference
+  useEffect(() => {
+    localStorage.setItem('finova_tour_speech_rate', speechRate.toString());
+  }, [speechRate]);
 
   // Save voice model preference
   useEffect(() => {

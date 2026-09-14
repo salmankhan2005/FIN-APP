@@ -44,7 +44,6 @@ export default function AppGuideTour() {
   } = useTour();
 
   const [highlightRect, setHighlightRect] = useState(null);
-  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const isMobile = useIsMobile();
   const cardRef = useRef(null);
 
@@ -233,75 +232,39 @@ export default function AppGuideTour() {
               </div>
             </div>
 
-            {/* Voice Model Selector & Test Audition Card */}
+            {/* Voice Preview & 1.5x Speed Bar */}
             <div style={{
-              background: 'rgba(236, 72, 153, 0.07)',
-              border: '1px solid rgba(236, 72, 153, 0.25)',
-              borderRadius: '14px', padding: '10px 12px',
-              marginBottom: '16px',
+              background: 'rgba(56, 189, 248, 0.08)',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              borderRadius: '14px', padding: '12px 14px',
+              marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#f472b6', fontWeight: 800, fontSize: 11.5 }}>
-                  <Headphones size={13} />
-                  <span>Voice Model (குரல் தேர்வு):</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => previewVoice()}
-                  style={{
-                    background: isSpeaking ? '#ec4899' : 'rgba(236, 72, 153, 0.2)',
-                    border: '1px solid rgba(236, 72, 153, 0.4)',
-                    borderRadius: 100, padding: '2px 9px',
-                    color: '#fff', fontSize: 11, fontWeight: 700,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                  }}
-                >
-                  <Volume2 size={11} />
-                  <span>{isSpeaking ? 'Playing...' : 'Test Voice (கேட்க)'}</span>
-                </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  fontSize: 11.5, fontWeight: 800, padding: '3px 9px', borderRadius: 100,
+                  background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.4)'
+                }}>
+                  ⚡ {speechRate}x Speed
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {language === 'ta' ? 'பல்லவி தமிழ் குரல்' : 'Neerja English Voice'}
+                </span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {VOICE_MODEL_OPTIONS.map((opt) => {
-                  const isSelected = voiceModel === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setVoiceModel(opt.id)}
-                      style={{
-                        padding: '7px 10px', borderRadius: 10, fontSize: 11, fontWeight: 700,
-                        background: isSelected
-                          ? `linear-gradient(135deg, ${opt.badgeColor}25 0%, rgba(15,23,42,0.6) 100%)`
-                          : 'rgba(255,255,255,0.03)',
-                        border: isSelected ? `1.5px solid ${opt.badgeColor}` : '1px solid rgba(255,255,255,0.08)',
-                        color: isSelected ? opt.badgeColor : 'var(--text-muted)',
-                        cursor: 'pointer', textAlign: 'left',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontWeight: 800, color: isSelected ? '#fff' : 'inherit', fontSize: 11.5 }}>
-                            {opt.name}
-                          </span>
-                          <span style={{
-                            fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 100,
-                            background: `${opt.badgeColor}22`, color: opt.badgeColor, border: `1px solid ${opt.badgeColor}44`
-                          }}>
-                            {opt.tag}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 9.5, opacity: 0.75, color: 'var(--text-muted)', marginTop: 2 }}>
-                          {opt.subtext}
-                        </div>
-                      </div>
-                      {isSelected && <Check size={14} style={{ color: opt.badgeColor }} />}
-                    </button>
-                  );
-                })}
-              </div>
+              <button
+                type="button"
+                onClick={() => previewVoice()}
+                style={{
+                  background: isSpeaking ? '#ec4899' : 'rgba(236, 72, 153, 0.2)',
+                  border: '1px solid rgba(236, 72, 153, 0.4)',
+                  borderRadius: 100, padding: '5px 12px',
+                  color: '#fff', fontSize: 11.5, fontWeight: 700,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+                }}
+              >
+                <Volume2 size={13} />
+                <span>{isSpeaking ? 'Playing...' : 'Test Voice (கேட்க)'}</span>
+              </button>
             </div>
 
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 18px' }}>
@@ -527,26 +490,27 @@ export default function AppGuideTour() {
                   {currentStepIndex + 1}/{totalSteps}
                 </span>
 
-                {/* Voice Model Selector Badge Button */}
+                {/* Speed Toggle Badge Button (Default 1.5x) */}
                 <button
                   type="button"
-                  onClick={() => setShowVoiceSettings(!showVoiceSettings)}
-                  title="Voice Model Settings (குரல் அமைப்புகள்)"
+                  onClick={() => {
+                    const next = speechRate === 1.5 ? 1.25 : speechRate === 1.25 ? 1.75 : 1.5;
+                    setSpeechRate(next);
+                  }}
+                  title="Toggle Voice Speed (1.25x / 1.5x / 1.75x)"
                   style={{
-                    background: `${activeModelOption.badgeColor}22`,
-                    border: `1px solid ${activeModelOption.badgeColor}55`,
+                    background: 'rgba(56, 189, 248, 0.14)',
+                    border: '1px solid rgba(56, 189, 248, 0.35)',
                     borderRadius: '100px',
                     padding: '2px 8px',
-                    color: activeModelOption.badgeColor,
-                    fontSize: '10px',
+                    color: '#38bdf8',
+                    fontSize: '10.5px',
                     fontWeight: 800,
-                    display: 'flex', alignItems: 'center', gap: 4,
+                    display: 'flex', alignItems: 'center', gap: 3,
                     cursor: 'pointer'
                   }}
                 >
-                  <Headphones size={11} />
-                  <span>{activeModelOption.shortName}</span>
-                  <Sliders size={9} style={{ opacity: 0.7 }} />
+                  <span>⚡ {speechRate}x</span>
                 </button>
               </div>
 
@@ -611,98 +575,7 @@ export default function AppGuideTour() {
               </div>
             </div>
 
-            {/* Voice Settings Popover (Mobile) */}
-            {showVoiceSettings && (
-              <div style={{
-                background: 'rgba(8, 16, 28, 0.96)',
-                border: '1px solid rgba(236, 72, 153, 0.35)',
-                borderRadius: 14,
-                padding: 12,
-                marginBottom: 12,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                animation: 'fadeIn 0.2s ease',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#f472b6', fontWeight: 800, fontSize: 11.5 }}>
-                    <Headphones size={13} />
-                    <span>Female Voice Model (குரல் தேர்வு)</span>
-                  </div>
-                  <button
-                    onClick={() => setShowVoiceSettings(false)}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                  {VOICE_MODEL_OPTIONS.map((opt) => {
-                    const isSelected = voiceModel === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => { setVoiceModel(opt.id); replayAudio(); }}
-                        style={{
-                          padding: '6px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                          background: isSelected
-                            ? `linear-gradient(135deg, ${opt.badgeColor}25 0%, rgba(15,23,42,0.6) 100%)`
-                            : 'rgba(255,255,255,0.03)',
-                          border: isSelected ? `1.5px solid ${opt.badgeColor}` : '1px solid rgba(255,255,255,0.08)',
-                          color: isSelected ? opt.badgeColor : 'var(--text-muted)',
-                          cursor: 'pointer', textAlign: 'left',
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontWeight: 800, color: isSelected ? '#fff' : 'inherit', fontSize: 11 }}>
-                              {opt.name}
-                            </span>
-                            <span style={{
-                              fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 100,
-                              background: `${opt.badgeColor}22`, color: opt.badgeColor, border: `1px solid ${opt.badgeColor}44`
-                            }}>
-                              {opt.tag}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: 9.5, opacity: 0.75, color: 'var(--text-muted)', marginTop: 1 }}>
-                            {opt.subtext}
-                          </div>
-                        </div>
-                        {isSelected && <Check size={13} style={{ color: opt.badgeColor }} />}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Speed:</span>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {[
-                      { rate: 0.85, label: '0.85x' },
-                      { rate: 1.0, label: '1.0x' },
-                      { rate: 1.15, label: '1.15x' },
-                    ].map((item) => (
-                      <button
-                        key={item.rate}
-                        onClick={() => { setSpeechRate(item.rate); replayAudio(); }}
-                        style={{
-                          padding: '2px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 700,
-                          background: speechRate === item.rate ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255,255,255,0.06)',
-                          border: speechRate === item.rate ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
-                          color: speechRate === item.rate ? '#38bdf8' : 'var(--text-muted)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Speaking audio progress bar */}
             {isSpeaking && (
@@ -718,8 +591,8 @@ export default function AppGuideTour() {
                     <span key={i} className="tour-sound-bar" style={{ animationDelay: `${delay}s`, background: '#ec4899', width: 2.5 }} />
                   ))}
                 </div>
-                <span style={{ fontSize: 11, color: activeModelOption.badgeColor, fontWeight: 700, flex: 1 }}>
-                  {language === 'ta' ? `பல்லவி பேசுகிறார் · ${activeModelDisplay}` : `Neerja speaking · ${activeModelDisplay}`}
+                <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 700, flex: 1 }}>
+                  {language === 'ta' ? `பல்லவி பேசுகிறார் (${speechRate}x)` : `Neerja speaking (${speechRate}x)`}
                 </span>
                 <div style={{ width: 60, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
                   <div style={{
@@ -925,26 +798,27 @@ export default function AppGuideTour() {
                   {currentStepIndex + 1} / {totalSteps}
                 </span>
 
-                {/* Voice Model Selector Badge Button */}
+                {/* Speed Toggle Badge Button (Default 1.5x) */}
                 <button
                   type="button"
-                  onClick={() => setShowVoiceSettings(!showVoiceSettings)}
-                  title="Voice Model Settings (குரல் அமைப்புகள்)"
+                  onClick={() => {
+                    const next = speechRate === 1.5 ? 1.25 : speechRate === 1.25 ? 1.75 : 1.5;
+                    setSpeechRate(next);
+                  }}
+                  title="Toggle Voice Speed (1.25x / 1.5x / 1.75x)"
                   style={{
-                    background: `${activeModelOption.badgeColor}22`,
-                    border: `1px solid ${activeModelOption.badgeColor}55`,
+                    background: 'rgba(56, 189, 248, 0.14)',
+                    border: '1px solid rgba(56, 189, 248, 0.35)',
                     borderRadius: '100px',
-                    padding: '2px 8px',
-                    color: activeModelOption.badgeColor,
-                    fontSize: '10.5px',
+                    padding: '2px 9px',
+                    color: '#38bdf8',
+                    fontSize: '11px',
                     fontWeight: 800,
-                    display: 'flex', alignItems: 'center', gap: 4,
+                    display: 'flex', alignItems: 'center', gap: 3,
                     cursor: 'pointer'
                   }}
                 >
-                  <Headphones size={11} />
-                  <span>{activeModelOption.shortName}</span>
-                  <Sliders size={9} style={{ opacity: 0.7 }} />
+                  <span>⚡ {speechRate}x</span>
                 </button>
               </div>
 
@@ -1004,98 +878,7 @@ export default function AppGuideTour() {
               </div>
             </div>
 
-            {/* Voice Settings Popover (Desktop) */}
-            {showVoiceSettings && (
-              <div style={{
-                background: 'rgba(8, 16, 28, 0.96)',
-                border: '1px solid rgba(236, 72, 153, 0.35)',
-                borderRadius: 14,
-                padding: 12,
-                marginBottom: 12,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                animation: 'fadeIn 0.2s ease',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#f472b6', fontWeight: 800, fontSize: 11.5 }}>
-                    <Headphones size={13} />
-                    <span>Female Voice Model (குரல் தேர்வு)</span>
-                  </div>
-                  <button
-                    onClick={() => setShowVoiceSettings(false)}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                  {VOICE_MODEL_OPTIONS.map((opt) => {
-                    const isSelected = voiceModel === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => { setVoiceModel(opt.id); replayAudio(); }}
-                        style={{
-                          padding: '6px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                          background: isSelected
-                            ? `linear-gradient(135deg, ${opt.badgeColor}25 0%, rgba(15,23,42,0.6) 100%)`
-                            : 'rgba(255,255,255,0.03)',
-                          border: isSelected ? `1.5px solid ${opt.badgeColor}` : '1px solid rgba(255,255,255,0.08)',
-                          color: isSelected ? opt.badgeColor : 'var(--text-muted)',
-                          cursor: 'pointer', textAlign: 'left',
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontWeight: 800, color: isSelected ? '#fff' : 'inherit', fontSize: 11 }}>
-                              {opt.name}
-                            </span>
-                            <span style={{
-                              fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 100,
-                              background: `${opt.badgeColor}22`, color: opt.badgeColor, border: `1px solid ${opt.badgeColor}44`
-                            }}>
-                              {opt.tag}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: 9.5, opacity: 0.75, color: 'var(--text-muted)', marginTop: 1 }}>
-                            {opt.subtext}
-                          </div>
-                        </div>
-                        {isSelected && <Check size={13} style={{ color: opt.badgeColor }} />}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Speed:</span>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {[
-                      { rate: 0.85, label: '0.85x' },
-                      { rate: 1.0, label: '1.0x' },
-                      { rate: 1.15, label: '1.15x' },
-                    ].map((item) => (
-                      <button
-                        key={item.rate}
-                        onClick={() => { setSpeechRate(item.rate); replayAudio(); }}
-                        style={{
-                          padding: '2px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 700,
-                          background: speechRate === item.rate ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255,255,255,0.06)',
-                          border: speechRate === item.rate ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
-                          color: speechRate === item.rate ? '#38bdf8' : 'var(--text-muted)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Title */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
@@ -1126,8 +909,8 @@ export default function AppGuideTour() {
                 border: '1px solid rgba(236, 72, 153, 0.25)',
                 borderRadius: 8, padding: '4px 10px',
               }}>
-                <span style={{ fontSize: 11, color: activeModelOption.badgeColor, fontWeight: 700, flex: 1 }}>
-                  {language === 'ta' ? `பல்லவி பேசுகிறார் · ${activeModelDisplay}` : `Neerja speaking · ${activeModelDisplay}`}
+                <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 700, flex: 1 }}>
+                  {language === 'ta' ? `பல்லவி பேசுகிறார் (${speechRate}x)` : `Neerja speaking (${speechRate}x)`}
                 </span>
                 <div style={{ width: 80, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
                   <div style={{

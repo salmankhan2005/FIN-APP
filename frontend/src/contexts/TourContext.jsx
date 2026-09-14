@@ -259,7 +259,64 @@ export function TourProvider({ children }) {
     }
   }, []);
 
-  // Text-To-Speech engine
+  // Helper: pick best female voice from available voices
+  const pickFemaleVoice = useCallback((voices, lang) => {
+    // Female name keywords for heuristic matching
+    const femaleKeywords = ['female', 'woman', 'girl', 'priya', 'zira', 'samantha', 'karen', 'moira',
+      'fiona', 'tessa', 'victoria', 'heather', 'ava', 'allison', 'susan', 'joanna', 'salli',
+      'kimberly', 'kendra', 'ivy', 'aria', 'jenny', 'ana', 'neerja', 'lekha', 'aditi', 'raveena'];
+
+    if (lang === 'ta') {
+      // 1. Prefer Tamil female voice
+      const tamilFemale = voices.find(v =>
+        (v.lang.startsWith('ta') || v.name.toLowerCase().includes('tamil')) &&
+        femaleKeywords.some(k => v.name.toLowerCase().includes(k))
+      );
+      if (tamilFemale) return { voice: tamilFemale, lang: 'ta-IN' };
+
+      // 2. Any Tamil voice
+      const tamilAny = voices.find(v => v.lang.startsWith('ta') || v.name.toLowerCase().includes('tamil'));
+      if (tamilAny) return { voice: tamilAny, lang: 'ta-IN' };
+
+      // 3. Indian English female fallback
+      const inFemale = voices.find(v =>
+        (v.lang.startsWith('en-IN') || v.name.toLowerCase().includes('india')) &&
+        femaleKeywords.some(k => v.name.toLowerCase().includes(k))
+      );
+      if (inFemale) return { voice: inFemale, lang: 'en-IN' };
+
+      // 4. Any English female
+      const enFemale = voices.find(v =>
+        v.lang.startsWith('en') && femaleKeywords.some(k => v.name.toLowerCase().includes(k))
+      );
+      if (enFemale) return { voice: enFemale, lang: 'en-IN' };
+
+      return { voice: null, lang: 'ta-IN' };
+    } else {
+      // English: prefer Indian English female
+      const inFemale = voices.find(v =>
+        (v.lang.startsWith('en-IN') || v.name.toLowerCase().includes('india')) &&
+        femaleKeywords.some(k => v.name.toLowerCase().includes(k))
+      );
+      if (inFemale) return { voice: inFemale, lang: 'en-IN' };
+
+      // Any Indian English
+      const inAny = voices.find(v => v.lang.startsWith('en-IN') || v.name.toLowerCase().includes('india'));
+      if (inAny) return { voice: inAny, lang: 'en-IN' };
+
+      // Any English female
+      const enFemale = voices.find(v =>
+        v.lang.startsWith('en') && femaleKeywords.some(k => v.name.toLowerCase().includes(k))
+      );
+      if (enFemale) return { voice: enFemale, lang: 'en-US' };
+
+      // First English voice
+      const enAny = voices.find(v => v.lang.startsWith('en'));
+      return { voice: enAny || null, lang: 'en-US' };
+    }
+  }, []);
+
+  // Text-To-Speech engine — uses female voice by default
   const speakStepText = useCallback((step, langOverride) => {
     if (!isVoiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
       return;
@@ -270,44 +327,45 @@ export function TourProvider({ children }) {
       ? `${step.titleTa}. ${step.descTa}`
       : `${step.titleEn}. ${step.descEn}`;
 
-    try {
-      window.speechSynthesis.cancel();
+    const doSpeak = () => {
+      try {
+        window.speechSynthesis.cancel();
 
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utteranceRef.current = utterance;
-      utterance.rate = speechRate;
-      utterance.pitch = 1.05;
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        utteranceRef.current = utterance;
+        utterance.rate = speechRate;
+        utterance.pitch = 1.15;  // Slightly higher pitch = more natural female tone
+        utterance.volume = 1;
 
-      // Select voice: Tamil or Indian English
-      const voices = window.speechSynthesis.getVoices() || [];
-      if (currentLang === 'ta') {
-        const tamilVoice = voices.find(v => v.lang.startsWith('ta') || v.name.toLowerCase().includes('tamil'));
-        if (tamilVoice) {
-          utterance.voice = tamilVoice;
-          utterance.lang = 'ta-IN';
+        const voices = window.speechSynthesis.getVoices() || [];
+        const { voice, lang } = pickFemaleVoice(voices, currentLang);
+
+        if (voice) {
+          utterance.voice = voice;
+          utterance.lang = lang;
         } else {
-          // Fallback to Indian English or default
-          const enInVoice = voices.find(v => v.lang.includes('IN') || v.lang.startsWith('en'));
-          if (enInVoice) utterance.voice = enInVoice;
-          utterance.lang = 'en-IN';
+          utterance.lang = currentLang === 'ta' ? 'ta-IN' : 'en-IN';
         }
-      } else {
-        const englishVoice = voices.find(v => v.lang.startsWith('en-IN') || v.name.toLowerCase().includes('india'))
-          || voices.find(v => v.lang.startsWith('en'));
-        if (englishVoice) utterance.voice = englishVoice;
-        utterance.lang = 'en-IN';
+
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.warn('Speech synthesis error:', err);
+        setIsSpeaking(false);
       }
+    };
 
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-
-      window.speechSynthesis.speak(utterance);
-    } catch (err) {
-      console.warn('Speech synthesis error:', err);
-      setIsSpeaking(false);
+    // Voices may not be loaded yet — wait a tick if empty
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) {
+      window.speechSynthesis.onvoiceschanged = () => doSpeak();
+    } else {
+      doSpeak();
     }
-  }, [isVoiceEnabled, language, speechRate]);
+  }, [isVoiceEnabled, language, speechRate, pickFemaleVoice]);
 
   // Start Tour
   const startTour = useCallback((customRole) => {

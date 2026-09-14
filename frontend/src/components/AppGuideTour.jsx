@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTour, VOICE_MODEL_OPTIONS } from '../contexts/TourContext';
 import {
   Volume2, VolumeX, RotateCcw, X, ChevronRight, ChevronLeft,
+  ChevronUp, ChevronDown,
   Sparkles, CheckCircle, Navigation, Globe, Play, HelpCircle,
   Mic, MicOff, Headphones, Sliders, Check
 } from 'lucide-react';
@@ -60,14 +61,32 @@ export default function AppGuideTour() {
   const speakerName = language === 'ta' ? 'பல்லவி' : 'Neerja';
   const speakerBadge = language === 'ta' ? 'பல்லவி (வழிகாட்டி)' : 'Neerja (Guide)';
 
-  // Touch swipe support for mobile cards
+  // Mobile expandable details state
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+
+  // Touch swipe support for mobile cards (horizontal navigation + vertical expand/collapse)
   const touchStartX = useRef(null);
-  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const touchStartY = useRef(null);
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
   const handleTouchEnd = (e) => {
-    if (touchStartX.current === null) return;
+    if (touchStartX.current === null || touchStartY.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
     touchStartX.current = null;
-    if (Math.abs(dx) < 50) return;
+    touchStartY.current = null;
+
+    // Vertical swipe: swipe up to expand, swipe down to collapse
+    if (Math.abs(dy) > 35 && Math.abs(dy) > Math.abs(dx)) {
+      if (dy < 0) setIsMobileExpanded(true);
+      else setIsMobileExpanded(false);
+      return;
+    }
+
+    // Horizontal swipe: next / back step
+    if (Math.abs(dx) < 40) return;
     if (dx < 0) nextStep();
     else prevStep();
   };
@@ -369,326 +388,267 @@ export default function AppGuideTour() {
         </div>
       )}
 
-      {/* ─── MOBILE: Bottom-Sheet Layout ─── */}
+      {/* ─── MOBILE: Ultra-Compact Dynamic Floating Island Layout ─── */}
       {isMobile ? (
         <div
           ref={cardRef}
           style={{
             position: 'fixed',
-            bottom: 0, left: 0, right: 0,
+            bottom: 'max(10px, env(safe-area-inset-bottom, 8px))',
+            left: 10, right: 10,
             zIndex: 1000001,
             pointerEvents: 'auto',
             display: 'flex',
             flexDirection: 'column',
-            animation: 'slideUpSheet 0.38s cubic-bezier(0.16, 1, 0.3, 1)',
+            animation: 'slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            background: 'rgba(9, 19, 36, 0.94)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            border: '1.2px solid rgba(56, 189, 248, 0.35)',
+            borderRadius: 18,
+            boxShadow: '0 12px 36px rgba(0,0,0,0.65), 0 0 20px rgba(56, 189, 248, 0.15)',
+            padding: '8px 12px 9px',
+            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            overflow: 'hidden',
           }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          {/* Floating Avatar above the sheet */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: 12,
-            padding: '0 16px 0 16px',
-            pointerEvents: 'none',
-          }}>
-            <div style={{
-              position: 'relative',
-              width: 80,
-              height: 110,
-              flexShrink: 0,
-              filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.6))',
-              animation: 'floatSubtle 3s ease-in-out infinite',
-            }}>
-              {/* Speaking aura */}
-              {isSpeaking && (
-                <div style={{
-                  position: 'absolute',
-                  top: 10, left: '50%', transform: 'translateX(-50%)',
-                  width: 60, height: 60, borderRadius: '50%',
-                  border: '2px solid rgba(236, 72, 153, 0.7)',
-                  animation: 'splashPulse 1.2s infinite',
-                }} />
-              )}
-              <img
-                src="/guide_avatar.png"
-                alt={speakerName}
-                style={{
-                  width: '100%', height: '100%',
-                  objectFit: 'contain',
-                  userSelect: 'none',
-                  transform: isSpeaking ? 'scale(1.04)' : 'scale(1)',
-                  transition: 'transform 0.2s ease',
-                }}
-              />
-              {/* Name badge */}
-              <div style={{
-                position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-                background: 'rgba(8, 18, 32, 0.95)',
-                border: '1px solid #38bdf8',
-                borderRadius: '100px', padding: '2px 7px',
-                fontSize: 9, fontWeight: 800, color: '#38bdf8',
-                whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3,
-              }}>
-                <span style={{
-                  width: 5, height: 5, borderRadius: '50%',
-                  background: isSpeaking ? '#ec4899' : '#38bdf8',
-                  display: 'inline-block',
-                  boxShadow: isSpeaking ? '0 0 6px #ec4899' : 'none',
-                }} />
-                {speakerName}
+          {/* Subtle Drag Indicator */}
+          <div
+            onClick={() => setIsMobileExpanded(!isMobileExpanded)}
+            style={{
+              display: 'flex', justifyContent: 'center', alignItems: 'center',
+              cursor: 'pointer', paddingBottom: 5,
+            }}
+          >
+            <div style={{ width: 32, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.22)' }} />
+          </div>
+
+          {/* Header Row: Avatar + Title + Status + Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+            {/* Avatar + Title Info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+              <div style={{ position: 'relative', width: 34, height: 34, flexShrink: 0 }}>
+                <img
+                  src="/guide_avatar_bust.png"
+                  alt={speakerName}
+                  style={{
+                    width: 34, height: 34, borderRadius: '50%', objectFit: 'cover',
+                    border: isSpeaking ? '2px solid #ec4899' : '2px solid #38bdf8',
+                    boxShadow: isSpeaking ? '0 0 10px rgba(236, 72, 153, 0.6)' : '0 2px 6px rgba(0,0,0,0.4)',
+                    transition: 'all 0.2s ease',
+                  }}
+                />
+                {isSpeaking && (
+                  <span style={{
+                    position: 'absolute', bottom: -1, right: -1,
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: '#ec4899', border: '1.5px solid #091324',
+                    boxShadow: '0 0 6px #ec4899',
+                  }} />
+                )}
+              </div>
+
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{
+                    fontSize: 9.5, fontWeight: 800, color: '#38bdf8',
+                    background: 'rgba(56, 189, 248, 0.15)', padding: '1px 5px',
+                    borderRadius: 4, letterSpacing: '0.2px', flexShrink: 0,
+                  }}>
+                    {currentStepIndex + 1}/{totalSteps}
+                  </span>
+                  <span style={{
+                    fontSize: 12.5, fontWeight: 800, color: '#ffffff',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
+                    {title}
+                  </span>
+                </div>
+
+                {/* Subtitle / Speaking indicator + Details toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 1 }}>
+                  {isSpeaking ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 1.5, height: 9 }}>
+                        {[0.1, 0.3, 0.2, 0.4].map((delay, i) => (
+                          <span key={i} className="tour-sound-bar" style={{ animationDelay: `${delay}s`, background: '#ec4899', width: 2 }} />
+                        ))}
+                      </div>
+                      <span style={{ fontSize: 10, color: '#ec4899', fontWeight: 700 }}>
+                        {language === 'ta' ? 'பேசுகிறார்' : 'Speaking'}
+                      </span>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                      {speakerName}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>•</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsMobileExpanded(!isMobileExpanded);
+                    }}
+                    style={{
+                      background: 'none', border: 'none', padding: 0,
+                      fontSize: 10, color: '#38bdf8', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 2,
+                    }}
+                  >
+                    <span>{isMobileExpanded ? 'Hide info' : 'Details'}</span>
+                    {isMobileExpanded ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Step title above sheet */}
-            <div style={{ flex: 1, paddingBottom: 6 }}>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                background: 'rgba(56, 189, 248, 0.14)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                borderRadius: 100, padding: '2px 9px',
-                fontSize: 10, fontWeight: 800, color: '#38bdf8',
-                marginBottom: 5, letterSpacing: '0.3px',
-              }}>
-                {currentStep.badge}
-              </div>
-              <div style={{
-                fontSize: 14, fontWeight: 800,
-                color: '#ffffff',
-                lineHeight: 1.25,
-                textShadow: '0 2px 8px rgba(0,0,0,0.8)',
-                display: 'flex', alignItems: 'center', gap: 5,
-              }}>
-                <span>{currentStep.icon}</span>
-                <span>{title}</span>
-              </div>
+            {/* Quick Action Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              {/* Speed Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const next = speechRate === 1.5 ? 1.25 : speechRate === 1.25 ? 1.75 : 1.5;
+                  setSpeechRate(next);
+                }}
+                title="Speed (வேகம்)"
+                style={{
+                  background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.25)',
+                  color: '#38bdf8', fontSize: 10, fontWeight: 800, padding: '2px 6px',
+                  borderRadius: 6, cursor: 'pointer',
+                }}
+              >
+                ⚡{speechRate}x
+              </button>
+
+              {/* Language Button */}
+              <button
+                onClick={toggleLanguage}
+                title="Toggle Language"
+                style={{
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'var(--text-primary)', fontSize: 10, fontWeight: 700, padding: '2px 6px',
+                  borderRadius: 6, cursor: 'pointer',
+                }}
+              >
+                {language === 'ta' ? 'தமிழ்' : 'EN'}
+              </button>
+
+              {/* Voice Mute Toggle */}
+              <button
+                onClick={toggleVoice}
+                title={isVoiceEnabled ? 'Mute' : 'Unmute'}
+                style={{
+                  background: isSpeaking ? 'rgba(236, 72, 153, 0.18)' : 'rgba(255,255,255,0.06)',
+                  border: 'none', color: isSpeaking ? '#ec4899' : 'var(--text-muted)',
+                  width: 24, height: 24, borderRadius: '50%',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                {isVoiceEnabled ? <Volume2 size={12} /> : <VolumeX size={12} />}
+              </button>
+
+              {/* Close Tour */}
+              <button
+                onClick={stopTour}
+                title="Close"
+                style={{
+                  background: 'rgba(255,255,255,0.06)', border: 'none',
+                  color: 'var(--text-muted)', width: 24, height: 24, borderRadius: '50%',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <X size={13} />
+              </button>
             </div>
           </div>
 
-          {/* Bottom Sheet Card */}
-          <div style={{
-            background: 'var(--bg-card, #0f1e38)',
-            border: '1.5px solid rgba(56, 189, 248, 0.3)',
-            borderBottom: 'none',
-            borderRadius: '22px 22px 0 0',
-            boxShadow: '0 -12px 40px rgba(0,0,0,0.6), 0 0 20px rgba(56,189,248,0.12)',
-            backdropFilter: 'blur(20px)',
-            padding: '16px 18px',
-            paddingBottom: `calc(16px + env(safe-area-inset-bottom, 0px))`,
-          }}>
-            {/* Drag handle */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-              <div style={{ width: 38, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)' }} />
-            </div>
-
-            {/* Controls row */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {/* Step counter */}
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
-                  {currentStepIndex + 1}/{totalSteps}
-                </span>
-
-                {/* Speed Toggle Badge Button (Default 1.5x) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = speechRate === 1.5 ? 1.25 : speechRate === 1.25 ? 1.75 : 1.5;
-                    setSpeechRate(next);
-                  }}
-                  title="Toggle Voice Speed (1.25x / 1.5x / 1.75x)"
-                  style={{
-                    background: 'rgba(56, 189, 248, 0.14)',
-                    border: '1px solid rgba(56, 189, 248, 0.35)',
-                    borderRadius: '100px',
-                    padding: '2px 8px',
-                    color: '#38bdf8',
-                    fontSize: '10.5px',
-                    fontWeight: 800,
-                    display: 'flex', alignItems: 'center', gap: 3,
-                    cursor: 'pointer'
-                  }}
-                >
-                  <span>⚡ {speechRate}x</span>
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {/* Language */}
-                <button
-                  onClick={toggleLanguage}
-                  title={language === 'ta' ? 'Switch to English' : 'தமிழுக்கு மாற்றவும்'}
-                  style={{
-                    background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-primary)', fontSize: '11px', fontWeight: 700,
-                    padding: '3px 8px', borderRadius: '100px', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 4,
-                  }}
-                >
-                  <Globe size={11} />
-                  <span>{language === 'ta' ? 'தமிழ்' : 'EN'}</span>
-                </button>
-
-                {/* Replay */}
-                <button onClick={replayAudio} title="Replay"
-                  style={{
-                    background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-primary)', width: 28, height: 28, borderRadius: '50%',
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <RotateCcw size={13} />
-                </button>
-
-                {/* Voice toggle */}
-                <button onClick={toggleVoice} title={isVoiceEnabled ? 'Mute' : 'Unmute'}
-                  style={{
-                    background: isSpeaking ? 'rgba(236, 72, 153, 0.22)' : 'rgba(255,255,255,0.08)',
-                    border: '1px solid var(--border-subtle)',
-                    color: isSpeaking ? '#ec4899' : 'var(--text-muted)',
-                    width: 28, height: 28, borderRadius: '50%',
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    position: 'relative',
-                  }}
-                >
-                  {isVoiceEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
-                  {isSpeaking && (
-                    <span style={{
-                      position: 'absolute', top: 0, right: 0,
-                      width: 7, height: 7, borderRadius: '50%', background: '#ec4899',
-                      boxShadow: '0 0 5px #ec4899',
-                    }} />
-                  )}
-                </button>
-
-                {/* Close */}
-                <button onClick={stopTour} title="Close Tour"
-                  style={{
-                    background: 'rgba(255,255,255,0.08)', border: 'none',
-                    color: 'var(--text-muted)', width: 28, height: 28, borderRadius: '50%',
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            </div>
-
-
-
-            {/* Speaking audio progress bar */}
-            {isSpeaking && (
-              <div style={{
-                marginBottom: 10,
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'rgba(236, 72, 153, 0.08)',
-                border: '1px solid rgba(236, 72, 153, 0.25)',
-                borderRadius: 8, padding: '4px 10px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 12 }}>
-                  {[0.1, 0.3, 0.2, 0.4, 0.15].map((delay, i) => (
-                    <span key={i} className="tour-sound-bar" style={{ animationDelay: `${delay}s`, background: '#ec4899', width: 2.5 }} />
-                  ))}
-                </div>
-                <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 700, flex: 1 }}>
-                  {language === 'ta' ? `பல்லவி பேசுகிறார் (${speechRate}x)` : `Neerja speaking (${speechRate}x)`}
-                </span>
-                <div style={{ width: 60, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', width: `${audioProgress}%`,
-                    background: activeModelOption.badgeColor, transition: 'width 0.2s linear'
-                  }} />
-                </div>
-              </div>
-            )}
-
-            {/* Description */}
-            <p style={{
-              margin: '0 0 10px 0', fontSize: 13, lineHeight: 1.55,
-              color: 'var(--text-secondary, #cbdff5)',
-            }}>
-              {description}
-            </p>
-
-            {/* Tip */}
-            {tip && (
-              <div style={{
-                background: 'rgba(56, 189, 248, 0.07)',
-                borderLeft: '3px solid #38bdf8',
-                borderRadius: '0 8px 8px 0',
-                padding: '6px 10px', fontSize: '11.5px',
-                color: 'var(--text-muted)', marginBottom: 12,
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <HelpCircle size={13} style={{ color: '#38bdf8', flexShrink: 0 }} />
-                <span>{tip}</span>
-              </div>
-            )}
-
-            {/* Progress bar */}
+          {/* Expandable Details Section */}
+          {isMobileExpanded && (
             <div style={{
-              width: '100%', height: 3, background: 'rgba(255,255,255,0.07)',
-              borderRadius: 10, overflow: 'hidden', marginBottom: 14,
+              paddingTop: 3, paddingBottom: 6,
+              animation: 'fadeIn 0.2s ease',
             }}>
-              <div style={{
-                height: '100%', width: `${progress}%`,
-                background: 'linear-gradient(90deg, #ec4899 0%, #38bdf8 100%)',
-                transition: 'width 0.35s ease',
-              }} />
+              <p style={{
+                margin: '0 0 6px 0', fontSize: 11.5, lineHeight: 1.45,
+                color: 'var(--text-secondary, #cbdff5)',
+              }}>
+                {description}
+              </p>
+              {tip && (
+                <div style={{
+                  background: 'rgba(56, 189, 248, 0.07)',
+                  borderLeft: '2.5px solid #38bdf8',
+                  borderRadius: '0 6px 6px 0',
+                  padding: '4px 8px', fontSize: 10.5,
+                  color: 'var(--text-muted)',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                }}>
+                  <HelpCircle size={11} style={{ color: '#38bdf8', flexShrink: 0 }} />
+                  <span>{tip}</span>
+                </div>
+              )}
             </div>
+          )}
 
-            {/* Nav Buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <button
-                onClick={stopTour}
-                className="btn btn-ghost btn-sm"
-                style={{ fontSize: 12, padding: '7px 10px', color: 'var(--text-muted)' }}
-              >
-                Skip
-              </button>
+          {/* Slim Progress bar */}
+          <div style={{
+            width: '100%', height: 2, background: 'rgba(255,255,255,0.08)',
+            borderRadius: 10, overflow: 'hidden', margin: '3px 0 6px',
+          }}>
+            <div style={{
+              height: '100%', width: `${progress}%`,
+              background: 'linear-gradient(90deg, #ec4899 0%, #38bdf8 100%)',
+              transition: 'width 0.3s ease',
+            }} />
+          </div>
 
-              <div style={{ display: 'flex', gap: 8 }}>
-                {currentStepIndex > 0 && (
-                  <button
-                    onClick={prevStep}
-                    className="btn btn-ghost btn-sm"
-                    style={{ fontSize: 12, padding: '7px 12px', gap: 4, borderRadius: 10 }}
-                  >
-                    <ChevronLeft size={14} />
-                    <span>Back</span>
-                  </button>
-                )}
+          {/* Bottom Row: Skip + Back/Next */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+            <button
+              onClick={stopTour}
+              style={{
+                background: 'none', border: 'none', color: 'var(--text-muted)',
+                fontSize: 11, cursor: 'pointer', padding: '3px 6px',
+              }}
+            >
+              Skip
+            </button>
 
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {currentStepIndex > 0 && (
                 <button
-                  onClick={nextStep}
-                  className="btn btn-primary btn-sm"
+                  onClick={prevStep}
                   style={{
-                    fontSize: 13, padding: '8px 20px', fontWeight: 700,
-                    gap: 6, borderRadius: 12,
-                    boxShadow: '0 2px 14px rgba(56, 189, 248, 0.4)',
-                    minWidth: 100,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+                    color: 'var(--text-primary)', fontSize: 11.5, fontWeight: 700,
+                    padding: '4px 9px', borderRadius: 8, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 3,
                   }}
                 >
-                  <span>{currentStepIndex === totalSteps - 1 ? 'Finish ✓' : 'Next'}</span>
-                  {currentStepIndex === totalSteps - 1
-                    ? <CheckCircle size={14} />
-                    : <ChevronRight size={14} />
-                  }
+                  <ChevronLeft size={13} />
+                  <span>Back</span>
                 </button>
-              </div>
-            </div>
+              )}
 
-            {/* Swipe hint (first step only) */}
-            {currentStepIndex === 0 && (
-              <div style={{
-                textAlign: 'center', fontSize: 10.5, color: 'var(--text-muted)',
-                marginTop: 8, opacity: 0.75,
-              }}>
-                ← Swipe left / right to navigate →
-              </div>
-            )}
+              <button
+                onClick={nextStep}
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                  border: 'none', color: '#ffffff',
+                  fontSize: 12, fontWeight: 700, padding: '5px 14px',
+                  borderRadius: 8, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  boxShadow: '0 2px 10px rgba(37, 99, 235, 0.4)',
+                }}
+              >
+                <span>{currentStepIndex === totalSteps - 1 ? 'Finish ✓' : 'Next'}</span>
+                {currentStepIndex === totalSteps - 1 ? <CheckCircle size={13} /> : <ChevronRight size={13} />}
+              </button>
+            </div>
           </div>
         </div>
 

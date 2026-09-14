@@ -136,8 +136,7 @@ export default function AppGuideTour() {
         style={{
           zIndex: 99999,
           animation: 'fadeIn 0.25s ease',
-          background: 'rgba(5, 10, 20, 0.82)',
-          backdropFilter: 'blur(10px)',
+          background: 'rgba(5, 10, 20, 0.75)',
           padding: isMobile ? '0 0 0 0' : undefined,
           alignItems: isMobile ? 'flex-end' : 'center',
         }}
@@ -343,19 +342,7 @@ export default function AppGuideTour() {
         pointerEvents: 'none',
       }}
     >
-      {/* ─── Backdrop Overlay ─── */}
-      <div
-        style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(5, 12, 22, 0.75)',
-          backdropFilter: 'blur(3px)',
-          pointerEvents: 'auto',
-          transition: 'all 0.3s ease',
-        }}
-        onClick={nextStep}
-      />
-
-      {/* ─── Spotlight Highlight ─── */}
+      {/* ─── Target Feature Border Highlight (Normal Clean Application, No Blur) ─── */}
       {highlightRect && (
         <div
           style={{
@@ -365,8 +352,8 @@ export default function AppGuideTour() {
             width: highlightRect.width + 12,
             height: highlightRect.height + 12,
             borderRadius: '16px',
-            border: '2px solid #38bdf8',
-            boxShadow: '0 0 25px rgba(56, 189, 248, 0.55), inset 0 0 15px rgba(56, 189, 248, 0.18)',
+            border: '2.5px solid #38bdf8',
+            boxShadow: '0 0 0 3px rgba(56, 189, 248, 0.25), 0 4px 20px rgba(56, 189, 248, 0.35)',
             pointerEvents: 'none',
             zIndex: 1000000,
             animation: 'pulseGlow 2s infinite',
@@ -401,9 +388,7 @@ export default function AppGuideTour() {
             display: 'flex',
             flexDirection: 'column',
             animation: 'slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-            background: 'rgba(9, 19, 36, 0.94)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
+            background: 'rgba(9, 19, 36, 0.98)',
             border: '1.2px solid rgba(56, 189, 248, 0.35)',
             borderRadius: 18,
             boxShadow: '0 12px 36px rgba(0,0,0,0.65), 0 0 20px rgba(56, 189, 248, 0.15)',
@@ -732,7 +717,6 @@ export default function AppGuideTour() {
             padding: '18px 20px',
             boxShadow: '0 16px 48px rgba(0,0,0,0.6), 0 0 25px rgba(56, 189, 248, 0.15)',
             position: 'relative',
-            backdropFilter: 'blur(16px)',
           }}>
             {/* Speech bubble tail */}
             <div style={{

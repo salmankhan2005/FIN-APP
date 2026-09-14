@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useTour } from '../contexts/TourContext';
+import { useTour, VOICE_MODEL_OPTIONS } from '../contexts/TourContext';
 import {
   Volume2, VolumeX, RotateCcw, X, ChevronRight, ChevronLeft,
   Sparkles, CheckCircle, Navigation, Globe, Play, HelpCircle,
@@ -47,6 +47,8 @@ export default function AppGuideTour() {
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const isMobile = useIsMobile();
   const cardRef = useRef(null);
+
+  const activeModelOption = VOICE_MODEL_OPTIONS.find(m => m.id === voiceModel) || VOICE_MODEL_OPTIONS[0];
 
   // Touch swipe support for mobile cards
   const touchStartX = useRef(null);
@@ -248,52 +250,46 @@ export default function AppGuideTour() {
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => setVoiceModel('neural')}
-                  style={{
-                    padding: '7px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700,
-                    background: voiceModel === 'neural'
-                      ? 'linear-gradient(135deg, rgba(236,72,153,0.3) 0%, rgba(168,85,247,0.3) 100%)'
-                      : 'rgba(255,255,255,0.04)',
-                    border: voiceModel === 'neural'
-                      ? '1.5px solid #ec4899'
-                      : '1px solid rgba(255,255,255,0.1)',
-                    color: voiceModel === 'neural' ? '#f472b6' : 'var(--text-muted)',
-                    cursor: 'pointer', textAlign: 'left',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 800, color: voiceModel === 'neural' ? '#fff' : 'inherit' }}>✨ Priya AI Model</div>
-                    <div style={{ fontSize: 9.5, opacity: 0.8 }}>Studio Neural Female</div>
-                  </div>
-                  {voiceModel === 'neural' && <Check size={13} style={{ color: '#ec4899' }} />}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setVoiceModel('synth')}
-                  style={{
-                    padding: '7px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700,
-                    background: voiceModel === 'synth'
-                      ? 'linear-gradient(135deg, rgba(56,189,248,0.3) 0%, rgba(37,99,235,0.3) 100%)'
-                      : 'rgba(255,255,255,0.04)',
-                    border: voiceModel === 'synth'
-                      ? '1.5px solid #38bdf8'
-                      : '1px solid rgba(255,255,255,0.1)',
-                    color: voiceModel === 'synth' ? '#38bdf8' : 'var(--text-muted)',
-                    cursor: 'pointer', textAlign: 'left',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 800, color: voiceModel === 'synth' ? '#fff' : 'inherit' }}>🎙️ Device Synth</div>
-                    <div style={{ fontSize: 9.5, opacity: 0.8 }}>System Web Voice</div>
-                  </div>
-                  {voiceModel === 'synth' && <Check size={13} style={{ color: '#38bdf8' }} />}
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {VOICE_MODEL_OPTIONS.map((opt) => {
+                  const isSelected = voiceModel === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setVoiceModel(opt.id)}
+                      style={{
+                        padding: '7px 10px', borderRadius: 10, fontSize: 11, fontWeight: 700,
+                        background: isSelected
+                          ? `linear-gradient(135deg, ${opt.badgeColor}25 0%, rgba(15,23,42,0.6) 100%)`
+                          : 'rgba(255,255,255,0.03)',
+                        border: isSelected ? `1.5px solid ${opt.badgeColor}` : '1px solid rgba(255,255,255,0.08)',
+                        color: isSelected ? opt.badgeColor : 'var(--text-muted)',
+                        cursor: 'pointer', textAlign: 'left',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontWeight: 800, color: isSelected ? '#fff' : 'inherit', fontSize: 11.5 }}>
+                            {opt.name}
+                          </span>
+                          <span style={{
+                            fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 100,
+                            background: `${opt.badgeColor}22`, color: opt.badgeColor, border: `1px solid ${opt.badgeColor}44`
+                          }}>
+                            {opt.tag}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 9.5, opacity: 0.75, color: 'var(--text-muted)', marginTop: 2 }}>
+                          {opt.subtext}
+                        </div>
+                      </div>
+                      {isSelected && <Check size={14} style={{ color: opt.badgeColor }} />}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -526,11 +522,11 @@ export default function AppGuideTour() {
                   onClick={() => setShowVoiceSettings(!showVoiceSettings)}
                   title="Voice Model Settings (குரல் அமைப்புகள்)"
                   style={{
-                    background: voiceModel === 'neural' ? 'rgba(236, 72, 153, 0.15)' : 'rgba(56, 189, 248, 0.15)',
-                    border: voiceModel === 'neural' ? '1px solid rgba(236, 72, 153, 0.4)' : '1px solid rgba(56, 189, 248, 0.4)',
+                    background: `${activeModelOption.badgeColor}22`,
+                    border: `1px solid ${activeModelOption.badgeColor}55`,
                     borderRadius: '100px',
                     padding: '2px 8px',
-                    color: voiceModel === 'neural' ? '#f472b6' : '#38bdf8',
+                    color: activeModelOption.badgeColor,
                     fontSize: '10px',
                     fontWeight: 800,
                     display: 'flex', alignItems: 'center', gap: 4,
@@ -538,7 +534,7 @@ export default function AppGuideTour() {
                   }}
                 >
                   <Headphones size={11} />
-                  <span>{voiceModel === 'neural' ? (language === 'ta' ? 'பல்லவி AI' : 'Neerja AI') : 'Synth'}</span>
+                  <span>{activeModelOption.shortName}</span>
                   <Sliders size={9} style={{ opacity: 0.7 }} />
                 </button>
               </div>
@@ -628,34 +624,46 @@ export default function AppGuideTour() {
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
-                  <button
-                    onClick={() => { setVoiceModel('neural'); replayAudio(); }}
-                    style={{
-                      padding: '6px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                      background: voiceModel === 'neural' ? 'linear-gradient(135deg, rgba(236,72,153,0.3), rgba(168,85,247,0.3))' : 'rgba(255,255,255,0.05)',
-                      border: voiceModel === 'neural' ? '1.5px solid #ec4899' : '1px solid rgba(255,255,255,0.1)',
-                      color: voiceModel === 'neural' ? '#f472b6' : 'var(--text-muted)',
-                      cursor: 'pointer', textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ fontWeight: 800, color: voiceModel === 'neural' ? '#fff' : 'inherit' }}>✨ Priya AI Model</div>
-                    <div style={{ fontSize: 9.5, opacity: 0.8 }}>Studio Neural Female</div>
-                  </button>
-
-                  <button
-                    onClick={() => { setVoiceModel('synth'); replayAudio(); }}
-                    style={{
-                      padding: '6px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                      background: voiceModel === 'synth' ? 'linear-gradient(135deg, rgba(56,189,248,0.3), rgba(37,99,235,0.3))' : 'rgba(255,255,255,0.05)',
-                      border: voiceModel === 'synth' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                      color: voiceModel === 'synth' ? '#38bdf8' : 'var(--text-muted)',
-                      cursor: 'pointer', textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ fontWeight: 800, color: voiceModel === 'synth' ? '#fff' : 'inherit' }}>🎙️ Device Synth</div>
-                    <div style={{ fontSize: 9.5, opacity: 0.8 }}>Browser Web Voice</div>
-                  </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                  {VOICE_MODEL_OPTIONS.map((opt) => {
+                    const isSelected = voiceModel === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => { setVoiceModel(opt.id); replayAudio(); }}
+                        style={{
+                          padding: '6px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                          background: isSelected
+                            ? `linear-gradient(135deg, ${opt.badgeColor}25 0%, rgba(15,23,42,0.6) 100%)`
+                            : 'rgba(255,255,255,0.03)',
+                          border: isSelected ? `1.5px solid ${opt.badgeColor}` : '1px solid rgba(255,255,255,0.08)',
+                          color: isSelected ? opt.badgeColor : 'var(--text-muted)',
+                          cursor: 'pointer', textAlign: 'left',
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 800, color: isSelected ? '#fff' : 'inherit', fontSize: 11 }}>
+                              {opt.name}
+                            </span>
+                            <span style={{
+                              fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 100,
+                              background: `${opt.badgeColor}22`, color: opt.badgeColor, border: `1px solid ${opt.badgeColor}44`
+                            }}>
+                              {opt.tag}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 9.5, opacity: 0.75, color: 'var(--text-muted)', marginTop: 1 }}>
+                            {opt.subtext}
+                          </div>
+                        </div>
+                        {isSelected && <Check size={13} style={{ color: opt.badgeColor }} />}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11 }}>
@@ -699,13 +707,13 @@ export default function AppGuideTour() {
                     <span key={i} className="tour-sound-bar" style={{ animationDelay: `${delay}s`, background: '#ec4899', width: 2.5 }} />
                   ))}
                 </div>
-                <span style={{ fontSize: 11, color: '#f472b6', fontWeight: 700, flex: 1 }}>
-                  {voiceModel === 'neural' ? `Priya speaking (${language === 'ta' ? 'பல்லவி AI' : 'Neerja AI'})` : 'Priya speaking (Synth)'}
+                <span style={{ fontSize: 11, color: activeModelOption.badgeColor, fontWeight: 700, flex: 1 }}>
+                  {`Priya speaking · ${activeModelOption.shortName}`}
                 </span>
                 <div style={{ width: 60, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
                   <div style={{
                     height: '100%', width: `${audioProgress}%`,
-                    background: '#ec4899', transition: 'width 0.2s linear'
+                    background: activeModelOption.badgeColor, transition: 'width 0.2s linear'
                   }} />
                 </div>
               </div>
@@ -912,11 +920,11 @@ export default function AppGuideTour() {
                   onClick={() => setShowVoiceSettings(!showVoiceSettings)}
                   title="Voice Model Settings (குரல் அமைப்புகள்)"
                   style={{
-                    background: voiceModel === 'neural' ? 'rgba(236, 72, 153, 0.15)' : 'rgba(56, 189, 248, 0.15)',
-                    border: voiceModel === 'neural' ? '1px solid rgba(236, 72, 153, 0.4)' : '1px solid rgba(56, 189, 248, 0.4)',
+                    background: `${activeModelOption.badgeColor}22`,
+                    border: `1px solid ${activeModelOption.badgeColor}55`,
                     borderRadius: '100px',
                     padding: '2px 8px',
-                    color: voiceModel === 'neural' ? '#f472b6' : '#38bdf8',
+                    color: activeModelOption.badgeColor,
                     fontSize: '10.5px',
                     fontWeight: 800,
                     display: 'flex', alignItems: 'center', gap: 4,
@@ -924,7 +932,7 @@ export default function AppGuideTour() {
                   }}
                 >
                   <Headphones size={11} />
-                  <span>{voiceModel === 'neural' ? (language === 'ta' ? 'பல்லவி AI' : 'Neerja AI') : 'Synth'}</span>
+                  <span>{activeModelOption.shortName}</span>
                   <Sliders size={9} style={{ opacity: 0.7 }} />
                 </button>
               </div>
@@ -999,7 +1007,7 @@ export default function AppGuideTour() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#f472b6', fontWeight: 800, fontSize: 11.5 }}>
                     <Headphones size={13} />
-                    <span>Female Voice Model (பெண் குரல் மாடல்)</span>
+                    <span>Female Voice Model (குரல் தேர்வு)</span>
                   </div>
                   <button
                     onClick={() => setShowVoiceSettings(false)}
@@ -1009,34 +1017,46 @@ export default function AppGuideTour() {
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
-                  <button
-                    onClick={() => { setVoiceModel('neural'); replayAudio(); }}
-                    style={{
-                      padding: '6px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                      background: voiceModel === 'neural' ? 'linear-gradient(135deg, rgba(236,72,153,0.3), rgba(168,85,247,0.3))' : 'rgba(255,255,255,0.05)',
-                      border: voiceModel === 'neural' ? '1.5px solid #ec4899' : '1px solid rgba(255,255,255,0.1)',
-                      color: voiceModel === 'neural' ? '#f472b6' : 'var(--text-muted)',
-                      cursor: 'pointer', textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ fontWeight: 800, color: voiceModel === 'neural' ? '#fff' : 'inherit' }}>✨ Priya AI Model</div>
-                    <div style={{ fontSize: 9.5, opacity: 0.8 }}>Studio Neural Female</div>
-                  </button>
-
-                  <button
-                    onClick={() => { setVoiceModel('synth'); replayAudio(); }}
-                    style={{
-                      padding: '6px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                      background: voiceModel === 'synth' ? 'linear-gradient(135deg, rgba(56,189,248,0.3), rgba(37,99,235,0.3))' : 'rgba(255,255,255,0.05)',
-                      border: voiceModel === 'synth' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                      color: voiceModel === 'synth' ? '#38bdf8' : 'var(--text-muted)',
-                      cursor: 'pointer', textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ fontWeight: 800, color: voiceModel === 'synth' ? '#fff' : 'inherit' }}>🎙️ Device Synth</div>
-                    <div style={{ fontSize: 9.5, opacity: 0.8 }}>Browser Web Voice</div>
-                  </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                  {VOICE_MODEL_OPTIONS.map((opt) => {
+                    const isSelected = voiceModel === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => { setVoiceModel(opt.id); replayAudio(); }}
+                        style={{
+                          padding: '6px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                          background: isSelected
+                            ? `linear-gradient(135deg, ${opt.badgeColor}25 0%, rgba(15,23,42,0.6) 100%)`
+                            : 'rgba(255,255,255,0.03)',
+                          border: isSelected ? `1.5px solid ${opt.badgeColor}` : '1px solid rgba(255,255,255,0.08)',
+                          color: isSelected ? opt.badgeColor : 'var(--text-muted)',
+                          cursor: 'pointer', textAlign: 'left',
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 800, color: isSelected ? '#fff' : 'inherit', fontSize: 11 }}>
+                              {opt.name}
+                            </span>
+                            <span style={{
+                              fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 100,
+                              background: `${opt.badgeColor}22`, color: opt.badgeColor, border: `1px solid ${opt.badgeColor}44`
+                            }}>
+                              {opt.tag}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 9.5, opacity: 0.75, color: 'var(--text-muted)', marginTop: 1 }}>
+                            {opt.subtext}
+                          </div>
+                        </div>
+                        {isSelected && <Check size={13} style={{ color: opt.badgeColor }} />}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11 }}>
@@ -1095,13 +1115,13 @@ export default function AppGuideTour() {
                 border: '1px solid rgba(236, 72, 153, 0.25)',
                 borderRadius: 8, padding: '4px 10px',
               }}>
-                <span style={{ fontSize: 11, color: '#f472b6', fontWeight: 700, flex: 1 }}>
-                  {voiceModel === 'neural' ? `Priya speaking (${language === 'ta' ? 'பல்லவி AI' : 'Neerja AI'})` : 'Priya speaking (Synth)'}
+                <span style={{ fontSize: 11, color: activeModelOption.badgeColor, fontWeight: 700, flex: 1 }}>
+                  {`Priya speaking · ${activeModelOption.shortName}`}
                 </span>
                 <div style={{ width: 80, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
                   <div style={{
                     height: '100%', width: `${audioProgress}%`,
-                    background: '#ec4899', transition: 'width 0.2s linear'
+                    background: activeModelOption.badgeColor, transition: 'width 0.2s linear'
                   }} />
                 </div>
               </div>

@@ -67,6 +67,7 @@ app.use('/api/audit',      require('./src/routes/audit'));
 app.use('/api/notifications', require('./src/routes/notifications'));
 app.use('/api/settlements',   require('./src/routes/settlements'));
 app.use('/api/daybook',       require('./src/routes/daybook'));
+app.use('/api/tts',           require('./src/routes/tts'));
 
 // Health check
 app.get(['/health', '/api/health'], (req, res) => res.json({

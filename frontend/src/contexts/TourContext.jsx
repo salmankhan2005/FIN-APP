@@ -209,6 +209,33 @@ export const TOUR_STEPS_BY_ROLE = {
   ],
 };
 
+export const VOICE_MODEL_OPTIONS = [
+  {
+    id: 'indic-parler',
+    name: 'AI4Bharat Indic-Parler-TTS',
+    tag: 'IIT Madras AI',
+    subtext: 'Open-Source Indic Neural Female (Tamil & English)',
+    shortName: 'Indic-Parler',
+    badgeColor: '#10b981',
+  },
+  {
+    id: 'neural',
+    name: 'Priya Studio Neural',
+    tag: 'Studio HD',
+    subtext: 'Azure Neural Female (Pallavi / Neerja)',
+    shortName: 'Priya Neural',
+    badgeColor: '#ec4899',
+  },
+  {
+    id: 'synth',
+    name: 'Device Synthesizer',
+    tag: 'Web Speech',
+    subtext: 'Client Device Female Synthesizer',
+    shortName: 'Device Synth',
+    badgeColor: '#38bdf8',
+  },
+];
+
 const TourContext = createContext(null);
 
 export function TourProvider({ children }) {
@@ -227,8 +254,8 @@ export function TourProvider({ children }) {
   const [speechRate, setSpeechRate] = useState(0.95);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
-  // Voice model selection: 'neural' (Azure Neural Female: Pallavi / Neerja) or 'synth' (Web Speech API)
-  const [voiceModel, setVoiceModel] = useState(() => localStorage.getItem('finova_tour_voice_model') || 'neural');
+  // Voice model selection: 'indic-parler' (AI4Bharat Indic-Parler-TTS), 'neural' (Studio HD), or 'synth' (Web Speech API)
+  const [voiceModel, setVoiceModel] = useState(() => localStorage.getItem('finova_tour_voice_model') || 'indic-parler');
   const [audioProgress, setAudioProgress] = useState(0);
 
   const utteranceRef = useRef(null);
@@ -386,8 +413,8 @@ export function TourProvider({ children }) {
 
     stopSpeech();
 
-    // 1. Neural AI Voice Model (High-Fidelity Studio Female Clips)
-    if (voiceModel === 'neural' && audioRef.current) {
+    // 1. Neural / Indic-Parler AI Voice Model (High-Fidelity Studio Female Clips)
+    if ((voiceModel === 'indic-parler' || voiceModel === 'neural') && audioRef.current) {
       const audioUrl = `/tour-audio/${resolvedRole}_${step.id}_${currentLang}.mp3`;
       const audio = audioRef.current;
       audio.src = audioUrl;
@@ -406,7 +433,7 @@ export function TourProvider({ children }) {
         setAudioProgress(100);
       };
       audio.onerror = () => {
-        console.info('Neural audio file unavailable, falling back to Web Speech API');
+        console.info('Neural/Indic-Parler audio file unavailable, falling back to Web Speech API');
         speakViaSpeechSynthesis(textToSpeak, currentLang);
       };
 
@@ -430,7 +457,7 @@ export function TourProvider({ children }) {
     const model = modelOverride || voiceModel;
     stopSpeech();
 
-    if (model === 'neural' && audioRef.current) {
+    if ((model === 'indic-parler' || model === 'neural') && audioRef.current) {
       const audio = audioRef.current;
       audio.src = `/tour-audio/welcome_modal_${lang}.mp3`;
       audio.playbackRate = speechRate;

@@ -227,7 +227,12 @@ export function TourProvider({ children }) {
   const [speechRate, setSpeechRate] = useState(0.95);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
+  // Voice model selection: 'neural' (Azure Neural Female: Pallavi / Neerja) or 'synth' (Web Speech API)
+  const [voiceModel, setVoiceModel] = useState(() => localStorage.getItem('finova_tour_voice_model') || 'neural');
+  const [audioProgress, setAudioProgress] = useState(0);
+
   const utteranceRef = useRef(null);
+  const audioRef = useRef(typeof Audio !== 'undefined' ? new Audio() : null);
 
   // Available steps for active role
   const steps = TOUR_STEPS_BY_ROLE[resolvedRole] || TOUR_STEPS_BY_ROLE.admin;
@@ -251,41 +256,57 @@ export function TourProvider({ children }) {
     localStorage.setItem('finova_tour_lang', language);
   }, [language]);
 
-  // Stop any ongoing speech
+  // Save voice model preference
+  useEffect(() => {
+    localStorage.setItem('finova_tour_voice_model', voiceModel);
+  }, [voiceModel]);
+
+  // Stop any ongoing speech or audio
   const stopSpeech = useCallback(() => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch {}
     }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+    }
+    setIsSpeaking(false);
+    setAudioProgress(0);
   }, []);
 
-  // Helper: pick best female voice from available voices
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopSpeech();
+    };
+  }, [stopSpeech]);
+
+  // Helper: pick best female voice from available browser voices
   const pickFemaleVoice = useCallback((voices, lang) => {
-    // Female name keywords for heuristic matching
     const femaleKeywords = ['female', 'woman', 'girl', 'priya', 'zira', 'samantha', 'karen', 'moira',
       'fiona', 'tessa', 'victoria', 'heather', 'ava', 'allison', 'susan', 'joanna', 'salli',
-      'kimberly', 'kendra', 'ivy', 'aria', 'jenny', 'ana', 'neerja', 'lekha', 'aditi', 'raveena'];
+      'kimberly', 'kendra', 'ivy', 'aria', 'jenny', 'ana', 'neerja', 'lekha', 'aditi', 'raveena', 'pallavi'];
 
     if (lang === 'ta') {
-      // 1. Prefer Tamil female voice
       const tamilFemale = voices.find(v =>
         (v.lang.startsWith('ta') || v.name.toLowerCase().includes('tamil')) &&
         femaleKeywords.some(k => v.name.toLowerCase().includes(k))
       );
       if (tamilFemale) return { voice: tamilFemale, lang: 'ta-IN' };
 
-      // 2. Any Tamil voice
       const tamilAny = voices.find(v => v.lang.startsWith('ta') || v.name.toLowerCase().includes('tamil'));
       if (tamilAny) return { voice: tamilAny, lang: 'ta-IN' };
 
-      // 3. Indian English female fallback
       const inFemale = voices.find(v =>
         (v.lang.startsWith('en-IN') || v.name.toLowerCase().includes('india')) &&
         femaleKeywords.some(k => v.name.toLowerCase().includes(k))
       );
       if (inFemale) return { voice: inFemale, lang: 'en-IN' };
 
-      // 4. Any English female
       const enFemale = voices.find(v =>
         v.lang.startsWith('en') && femaleKeywords.some(k => v.name.toLowerCase().includes(k))
       );
@@ -293,32 +314,68 @@ export function TourProvider({ children }) {
 
       return { voice: null, lang: 'ta-IN' };
     } else {
-      // English: prefer Indian English female
       const inFemale = voices.find(v =>
         (v.lang.startsWith('en-IN') || v.name.toLowerCase().includes('india')) &&
         femaleKeywords.some(k => v.name.toLowerCase().includes(k))
       );
       if (inFemale) return { voice: inFemale, lang: 'en-IN' };
 
-      // Any Indian English
       const inAny = voices.find(v => v.lang.startsWith('en-IN') || v.name.toLowerCase().includes('india'));
       if (inAny) return { voice: inAny, lang: 'en-IN' };
 
-      // Any English female
       const enFemale = voices.find(v =>
         v.lang.startsWith('en') && femaleKeywords.some(k => v.name.toLowerCase().includes(k))
       );
       if (enFemale) return { voice: enFemale, lang: 'en-US' };
 
-      // First English voice
       const enAny = voices.find(v => v.lang.startsWith('en'));
       return { voice: enAny || null, lang: 'en-US' };
     }
   }, []);
 
-  // Text-To-Speech engine — uses female voice by default
+  // Web Speech API fallback engine
+  const speakViaSpeechSynthesis = useCallback((text, lang) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utteranceRef.current = utterance;
+      utterance.rate = speechRate;
+      utterance.pitch = 1.15; // Natural female pitch
+      utterance.volume = 1;
+
+      const voices = window.speechSynthesis.getVoices() || [];
+      const { voice, lang: resolvedLang } = pickFemaleVoice(voices, lang);
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = resolvedLang;
+      } else {
+        utterance.lang = lang === 'ta' ? 'ta-IN' : 'en-IN';
+      }
+
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        setAudioProgress(10);
+      };
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        setAudioProgress(100);
+      };
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+        setAudioProgress(0);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.warn('SpeechSynthesis error:', err);
+      setIsSpeaking(false);
+    }
+  }, [speechRate, pickFemaleVoice]);
+
+  // Main Speech Engine: Plays Neural Audio Clip or falls back to Web Speech Synthesis
   const speakStepText = useCallback((step, langOverride) => {
-    if (!isVoiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    if (!isVoiceEnabled) {
       return;
     }
 
@@ -327,45 +384,83 @@ export function TourProvider({ children }) {
       ? `${step.titleTa}. ${step.descTa}`
       : `${step.titleEn}. ${step.descEn}`;
 
-    const doSpeak = () => {
-      try {
-        window.speechSynthesis.cancel();
+    stopSpeech();
 
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utteranceRef.current = utterance;
-        utterance.rate = speechRate;
-        utterance.pitch = 1.15;  // Slightly higher pitch = more natural female tone
-        utterance.volume = 1;
+    // 1. Neural AI Voice Model (High-Fidelity Studio Female Clips)
+    if (voiceModel === 'neural' && audioRef.current) {
+      const audioUrl = `/tour-audio/${resolvedRole}_${step.id}_${currentLang}.mp3`;
+      const audio = audioRef.current;
+      audio.src = audioUrl;
+      audio.playbackRate = speechRate;
 
-        const voices = window.speechSynthesis.getVoices() || [];
-        const { voice, lang } = pickFemaleVoice(voices, currentLang);
-
-        if (voice) {
-          utterance.voice = voice;
-          utterance.lang = lang;
-        } else {
-          utterance.lang = currentLang === 'ta' ? 'ta-IN' : 'en-IN';
+      audio.onplay = () => {
+        setIsSpeaking(true);
+      };
+      audio.ontimeupdate = () => {
+        if (audio.duration && !isNaN(audio.duration)) {
+          setAudioProgress((audio.currentTime / audio.duration) * 100);
         }
-
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-
-        window.speechSynthesis.speak(utterance);
-      } catch (err) {
-        console.warn('Speech synthesis error:', err);
+      };
+      audio.onended = () => {
         setIsSpeaking(false);
-      }
-    };
+        setAudioProgress(100);
+      };
+      audio.onerror = () => {
+        console.info('Neural audio file unavailable, falling back to Web Speech API');
+        speakViaSpeechSynthesis(textToSpeak, currentLang);
+      };
 
-    // Voices may not be loaded yet — wait a tick if empty
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length === 0) {
-      window.speechSynthesis.onvoiceschanged = () => doSpeak();
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Audio play prevented or interrupted:', err);
+          // Fall back if user interaction restrictions block Audio element
+          speakViaSpeechSynthesis(textToSpeak, currentLang);
+        });
+      }
     } else {
-      doSpeak();
+      // 2. Synthesizer Voice Model
+      speakViaSpeechSynthesis(textToSpeak, currentLang);
     }
-  }, [isVoiceEnabled, language, speechRate, pickFemaleVoice]);
+  }, [isVoiceEnabled, language, resolvedRole, voiceModel, speechRate, stopSpeech, speakViaSpeechSynthesis]);
+
+  // Preview voice sample (can be triggered from modal or settings)
+  const previewVoice = useCallback((langOverride, modelOverride) => {
+    const lang = langOverride || language;
+    const model = modelOverride || voiceModel;
+    stopSpeech();
+
+    if (model === 'neural' && audioRef.current) {
+      const audio = audioRef.current;
+      audio.src = `/tour-audio/welcome_modal_${lang}.mp3`;
+      audio.playbackRate = speechRate;
+      audio.onplay = () => setIsSpeaking(true);
+      audio.ontimeupdate = () => {
+        if (audio.duration) setAudioProgress((audio.currentTime / audio.duration) * 100);
+      };
+      audio.onended = () => {
+        setIsSpeaking(false);
+        setAudioProgress(100);
+      };
+      audio.onerror = () => {
+        const fallbackText = lang === 'ta'
+          ? 'வணக்கம்! நான் உங்கள் வழிகாட்டி பிரியா. உங்கள் ஃபினோவா நிதி மேலாண்மை செயலிக்கு நல்வரவு!'
+          : 'Hello! I am Priya, your Finova digital advisor. Welcome to your finance management app!';
+        speakViaSpeechSynthesis(fallbackText, lang);
+      };
+      audio.play().catch(() => {
+        const fallbackText = lang === 'ta'
+          ? 'வணக்கம்! நான் உங்கள் வழிகாட்டி பிரியா.'
+          : 'Hello! I am Priya, your Finova digital advisor.';
+        speakViaSpeechSynthesis(fallbackText, lang);
+      });
+    } else {
+      const sampleText = lang === 'ta'
+        ? 'வணக்கம்! நான் உங்கள் வழிகாட்டி பிரியா. இது கணினி பெண் குரல் மாதிரி.'
+        : 'Hello! I am Priya, testing your device synthesizer female voice.';
+      speakViaSpeechSynthesis(sampleText, lang);
+    }
+  }, [language, voiceModel, speechRate, stopSpeech, speakViaSpeechSynthesis]);
 
   // Start Tour
   const startTour = useCallback((customRole) => {
@@ -483,6 +578,10 @@ export function TourProvider({ children }) {
         isVoiceEnabled,
         isSpeaking,
         speechRate,
+        voiceModel,
+        setVoiceModel,
+        audioProgress,
+        previewVoice,
         showWelcomeModal,
         setShowWelcomeModal,
         startTour,

@@ -3,10 +3,12 @@ import { Suspense, useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { TourProvider } from './contexts/TourContext';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import ScrollToTop from './components/ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
+import AppGuideTour from './components/AppGuideTour';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import './index.css';
 
@@ -209,28 +211,31 @@ export default function App() {
     <ThemeProvider>
       <BrowserRouter>
         <AuthProvider>
-          <ScrollToTop />
-          <Toaster
-            position="top-center"
-            toastOptions={{
-              duration: 3000,
-              style: {
-                background: 'var(--bg-card, #ffffff)',
-                color: 'var(--text-primary, #0f172a)',
-                border: '1px solid var(--border-subtle, rgba(0,0,0,0.08))',
-                borderRadius: '12px',
-                boxShadow: 'var(--shadow-md)',
-                fontSize: '13px',
-                maxWidth: '90vw',
-                wordBreak: 'break-word',
-              },
-            }}
-            containerStyle={{ top: 60 }}
-            visibleToasts={2}
-          />
-          <ErrorBoundary>
-            <OnboardingGate />
-          </ErrorBoundary>
+          <TourProvider>
+            <ScrollToTop />
+            <Toaster
+              position="top-center"
+              toastOptions={{
+                duration: 3000,
+                style: {
+                  background: 'var(--bg-card, #ffffff)',
+                  color: 'var(--text-primary, #0f172a)',
+                  border: '1px solid var(--border-subtle, rgba(0,0,0,0.08))',
+                  borderRadius: '12px',
+                  boxShadow: 'var(--shadow-md)',
+                  fontSize: '13px',
+                  maxWidth: '90vw',
+                  wordBreak: 'break-word',
+                },
+              }}
+              containerStyle={{ top: 60 }}
+              visibleToasts={2}
+            />
+            <ErrorBoundary>
+              <OnboardingGate />
+              <AppGuideTour />
+            </ErrorBoundary>
+          </TourProvider>
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>

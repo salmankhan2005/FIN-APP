@@ -7,8 +7,8 @@ import edge_tts
 STEPS = {
     # Admin
     "admin_welcome": {
-        "ta": "வணக்கம், நான் உங்கள் வழிகாட்டி பிரியா. ஃபினோவா நிதி மேலாண்மை அமைப்பின் அனைத்து முக்கிய அம்சங்களையும் உங்களுக்கு எளிமையாக விளக்குகிறேன், வாருங்கள்.",
-        "en": "Hello! I am Priya, your Finova digital advisor. I will guide you through all the core features of your finance management system. Let us take a quick walkthrough."
+        "ta": "வணக்கம், நான் உங்கள் வழிகாட்டி பல்லவி. ஃபினோவா நிதி மேலாண்மை அமைப்பின் அனைத்து முக்கிய அம்சங்களையும் உங்களுக்கு எளிமையாக விளக்குகிறேன், வாருங்கள்.",
+        "en": "Hello! I am Neerja, your Finova digital advisor. I will guide you through all the core features of your finance management system. Let us take a quick walkthrough."
     },
     "admin_financials": {
         "ta": "இங்கே நீங்கள் வழங்கிய மொத்த கடன், அசல் நிலுவை, வட்டி லாபம் மற்றும் இன்றைய வசூல் தொகையை ஒரே பார்வையில் விரிவாகக் கண்காணிக்கலாம்.",

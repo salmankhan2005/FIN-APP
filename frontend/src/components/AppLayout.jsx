@@ -421,7 +421,7 @@ export default function AppLayout() {
             >
               <img 
                 src="/guide_avatar_bust.png" 
-                alt="Priya Guide" 
+                alt="Voice Tour Guide" 
                 style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #38bdf8' }} 
               />
               <span style={{ flex: 1, textAlign: 'left' }}>App Tour (வழிகாட்டி)</span>

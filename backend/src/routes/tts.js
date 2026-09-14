@@ -16,7 +16,7 @@ const VOICE_MODELS = [
   },
   {
     id: 'neural',
-    name: 'Priya Studio Neural AI',
+    name: 'Pallavi & Neerja Studio Neural AI',
     tag: 'Studio HD Offline',
     provider: 'Azure Neural (Pallavi & Neerja)',
     description: 'Crisp pre-rendered neural voice clips with zero latency and 100% offline support.',

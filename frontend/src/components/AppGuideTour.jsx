@@ -50,6 +50,17 @@ export default function AppGuideTour() {
 
   const activeModelOption = VOICE_MODEL_OPTIONS.find(m => m.id === voiceModel) || VOICE_MODEL_OPTIONS[0];
 
+  const activeModelDisplay = voiceModel === 'indic-parler'
+    ? 'Indic-Parler · AI4Bharat'
+    : voiceModel === 'synth'
+      ? 'Device Synth'
+      : language === 'ta'
+        ? 'Pallavi Neural (பல்லவி)'
+        : 'Neerja Neural (நீரஜா)';
+
+  const speakerName = language === 'ta' ? 'பல்லவி' : 'Neerja';
+  const speakerBadge = language === 'ta' ? 'பல்லவி (வழிகாட்டி)' : 'Neerja (Guide)';
+
   // Touch swipe support for mobile cards
   const touchStartX = useRef(null);
   const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
@@ -163,7 +174,7 @@ export default function AppGuideTour() {
               }} />
               <img
                 src="/guide_avatar_bust.png"
-                alt="Priya - Finova Guide"
+                alt={`${speakerName} - Finova Guide`}
                 style={{
                   width: isMobile ? 76 : 92,
                   height: isMobile ? 76 : 92,
@@ -197,7 +208,7 @@ export default function AppGuideTour() {
                 background: isSpeaking ? '#ec4899' : '#38bdf8',
                 boxShadow: isSpeaking ? '0 0 8px #ec4899' : 'none',
               }} />
-              <span>Priya AI Female Voice (பெண் குரல் மாடல்)</span>
+              <span>{language === 'ta' ? 'Pallavi Neural AI (பல்லவி பெண் குரல்)' : 'Neerja Neural AI (Neerja Indian English Voice)'}</span>
             </div>
           </div>
 
@@ -218,7 +229,7 @@ export default function AppGuideTour() {
                 <Volume2 size={18} />
               </div>
               <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.45 }}>
-                <strong>Interactive Voice Tour:</strong> Priya speaks in natural Tamil (பல்லவி) & Indian English (Neerja) step-by-step!
+                <strong>Interactive Voice Tour:</strong> Spoken by <strong>Pallavi (பல்லவி)</strong> in Tamil & <strong>Neerja (நீரஜா)</strong> in Indian English!
               </div>
             </div>
 
@@ -439,7 +450,7 @@ export default function AppGuideTour() {
               )}
               <img
                 src="/guide_avatar.png"
-                alt="Priya"
+                alt={speakerName}
                 style={{
                   width: '100%', height: '100%',
                   objectFit: 'contain',
@@ -463,7 +474,7 @@ export default function AppGuideTour() {
                   display: 'inline-block',
                   boxShadow: isSpeaking ? '0 0 6px #ec4899' : 'none',
                 }} />
-                Priya
+                {speakerName}
               </div>
             </div>
 
@@ -708,7 +719,7 @@ export default function AppGuideTour() {
                   ))}
                 </div>
                 <span style={{ fontSize: 11, color: activeModelOption.badgeColor, fontWeight: 700, flex: 1 }}>
-                  {`Priya speaking · ${activeModelOption.shortName}`}
+                  {language === 'ta' ? `பல்லவி பேசுகிறார் · ${activeModelDisplay}` : `Neerja speaking · ${activeModelDisplay}`}
                 </span>
                 <div style={{ width: 60, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
                   <div style={{
@@ -849,7 +860,7 @@ export default function AppGuideTour() {
 
             <img
               src="/guide_avatar.png"
-              alt="Priya - Finova App Guide"
+              alt={`${speakerName} - Finova App Guide`}
               style={{
                 width: '100%', height: '100%',
                 objectFit: 'contain',
@@ -874,7 +885,7 @@ export default function AppGuideTour() {
                 display: 'inline-block',
                 boxShadow: isSpeaking ? '0 0 6px #ec4899' : 'none',
               }} />
-              <span>Priya (வழிகாட்டி)</span>
+              <span>{speakerBadge}</span>
             </div>
           </div>
 
@@ -1116,7 +1127,7 @@ export default function AppGuideTour() {
                 borderRadius: 8, padding: '4px 10px',
               }}>
                 <span style={{ fontSize: 11, color: activeModelOption.badgeColor, fontWeight: 700, flex: 1 }}>
-                  {`Priya speaking · ${activeModelOption.shortName}`}
+                  {language === 'ta' ? `பல்லவி பேசுகிறார் · ${activeModelDisplay}` : `Neerja speaking · ${activeModelDisplay}`}
                 </span>
                 <div style={{ width: 80, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
                   <div style={{

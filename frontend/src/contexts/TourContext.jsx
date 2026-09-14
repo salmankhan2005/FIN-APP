@@ -9,8 +9,8 @@ export const TOUR_STEPS_BY_ROLE = {
       id: 'welcome',
       titleEn: 'Welcome to Finova Admin Tour',
       titleTa: 'Finova நிர்வாகி வழிகாட்டிக்கு வரவேற்கிறோம்!',
-      descEn: 'Hello! I am Priya, your Finova digital advisor. I will guide you through all the core features of your finance management system. Let us take a quick walkthrough.',
-      descTa: 'வணக்கம், நான் உங்கள் வழிகாட்டி பிரியா. ஃபினோவா நிதி மேலாண்மை அமைப்பின் அனைத்து முக்கிய அம்சங்களையும் உங்களுக்கு எளிமையாக விளக்குகிறேன், வாருங்கள்.',
+      descEn: 'Hello! I am Neerja, your Finova digital advisor. I will guide you through all the core features of your finance management system. Let us take a quick walkthrough.',
+      descTa: 'வணக்கம், நான் உங்கள் வழிகாட்டி பல்லவி. ஃபினோவா நிதி மேலாண்மை அமைப்பின் அனைத்து முக்கிய அம்சங்களையும் உங்களுக்கு எளிமையாக விளக்குகிறேன், வாருங்கள்.',
       path: '/',
       selector: '.stats-grid',
       badge: 'FINOVA TOUR · படி 1',
@@ -220,10 +220,10 @@ export const VOICE_MODEL_OPTIONS = [
   },
   {
     id: 'neural',
-    name: 'Priya Studio Neural',
+    name: 'Pallavi & Neerja Studio Neural',
     tag: 'Studio HD',
-    subtext: 'Azure Neural Female (Pallavi / Neerja)',
-    shortName: 'Priya Neural',
+    subtext: 'Tamil (Pallavi) & Indian English (Neerja)',
+    shortName: 'Pallavi / Neerja',
     badgeColor: '#ec4899',
   },
   {
@@ -476,8 +476,8 @@ export function TourProvider({ children }) {
       audio.onerror = () => {
         if (model === 'synth') {
           const fallbackText = lang === 'ta'
-            ? 'வணக்கம்! நான் உங்கள் வழிகாட்டி பிரியா. உங்கள் ஃபினோவா நிதி மேலாண்மை செயலிக்கு நல்வரவு!'
-            : 'Hello! I am Priya, your Finova digital advisor. Welcome to your finance management app!';
+            ? 'வணக்கம்! நான் உங்கள் வழிகாட்டி பல்லவி. உங்கள் ஃபினோவா நிதி மேலாண்மை செயலிக்கு நல்வரவு!'
+            : 'Hello! I am Neerja, your Finova digital advisor. Welcome to your finance management app!';
           speakViaSpeechSynthesis(fallbackText, lang);
         }
       };
@@ -488,16 +488,16 @@ export function TourProvider({ children }) {
           console.warn('Preview audio playback prevented:', err);
           if (model === 'synth') {
             const fallbackText = lang === 'ta'
-              ? 'வணக்கம்! நான் உங்கள் வழிகாட்டி பிரியா.'
-              : 'Hello! I am Priya, your Finova digital advisor.';
+              ? 'வணக்கம்! நான் உங்கள் வழிகாட்டி பல்லவி.'
+              : 'Hello! I am Neerja, your Finova digital advisor.';
             speakViaSpeechSynthesis(fallbackText, lang);
           }
         });
       }
     } else {
       const sampleText = lang === 'ta'
-        ? 'வணக்கம்! நான் உங்கள் வழிகாட்டி பிரியா. இது கணினி பெண் குரல் மாதிரி.'
-        : 'Hello! I am Priya, testing your device synthesizer female voice.';
+        ? 'வணக்கம்! நான் உங்கள் வழிகாட்டி பல்லவி. இது கணினி பெண் குரல் மாதிரி.'
+        : 'Hello! I am Neerja, testing your device synthesizer female voice.';
       speakViaSpeechSynthesis(sampleText, lang);
     }
   }, [language, voiceModel, speechRate, stopSpeech, speakViaSpeechSynthesis]);

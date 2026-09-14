@@ -273,6 +273,23 @@ export function AuthProvider({ children }) {
     return false;
   };
 
+  // Get stored user information for a specific role
+  const getStoredRoleSession = (targetRole) => {
+    if (!targetRole) return null;
+    const norm = (targetRole === 'SUPER_ADMIN' || targetRole === 'ADMIN') ? 'ADMIN' : targetRole;
+    if (user && ((norm === 'ADMIN' && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) || user.role === norm)) {
+      return { user, token: sessionStorage.getItem('token') || localStorage.getItem('token') };
+    }
+    try {
+      const raw = localStorage.getItem(`finova_session_${norm}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.token && parsed?.user) return parsed;
+      }
+    } catch (_) {}
+    return null;
+  };
+
   // Directly switch to or restore an already logged-in role session
   const switchOrRestoreRole = (targetRole) => {
     if (!targetRole) return false;
@@ -358,6 +375,7 @@ export function AuthProvider({ children }) {
       loginWithGoogle,
       logout,
       isRoleLoggedIn,
+      getStoredRoleSession,
       switchOrRestoreRole,
       isSuperAdmin,
       isAdmin,

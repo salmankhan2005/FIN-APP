@@ -140,7 +140,8 @@ export default function AppLayout() {
         <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
           <Menu size={20} />
         </button>
-        <div className="mobile-header-brand">
+        <div className="mobile-header-brand" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <img src="/logo-icon.png" alt="Finova" style={{ width: 26, height: 26, borderRadius: 7, objectFit: 'contain', flexShrink: 0 }} />
           <span className="mobile-header-title">{currentPage}</span>
         </div>
         <div className="mobile-header-user" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { signInWithGoogleForAdmin } from '../services/firebase';
-import { User, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, ArrowLeft, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
 
 const roleConfigs = {
   ADMIN: {
     title: 'Super Admin',
     emoji: '👑',
-    color: '#2563eb',
-    badgeBg: '#eff6ff',
-    badgeBorder: '#bfdbfe',
-    badgeColor: '#1d4ed8',
+    color: '#3b82f6',
+    badgeBg: 'rgba(59, 130, 246, 0.12)',
+    badgeBorder: 'rgba(59, 130, 246, 0.3)',
+    badgeColor: '#60a5fa',
     idLabel: 'Username or Email',
     idPlaceholder: 'admin@finova.com or phone',
     passPlaceholder: '••••••••',
@@ -19,22 +20,22 @@ const roleConfigs = {
   AGENT: {
     title: 'Collection Agent',
     emoji: '🏍️',
-    color: '#059669',
-    badgeBg: '#f0fdf4',
-    badgeBorder: '#a7f3d0',
-    badgeColor: '#047857',
+    color: '#10b981',
+    badgeBg: 'rgba(16, 185, 129, 0.12)',
+    badgeBorder: 'rgba(16, 185, 129, 0.3)',
+    badgeColor: '#34d399',
     idLabel: 'Agent Phone or Agent ID',
     idPlaceholder: '9659447695 or AGT-7625',
     passPlaceholder: 'Password or AGT-XXXX',
     showGoogle: false,
   },
   CUSTOMER: {
-    title: 'Customer',
+    title: 'Customer Portal',
     emoji: '📱',
-    color: '#2563eb',
-    badgeBg: '#eff6ff',
-    badgeBorder: '#bfdbfe',
-    badgeColor: '#1d4ed8',
+    color: '#8b5cf6',
+    badgeBg: 'rgba(139, 92, 246, 0.12)',
+    badgeBorder: 'rgba(139, 92, 246, 0.3)',
+    badgeColor: '#a78bfa',
     idLabel: 'Registered Mobile Number',
     idPlaceholder: '10-digit mobile number',
     passPlaceholder: 'Your PIN or password',
@@ -42,8 +43,8 @@ const roleConfigs = {
   },
 };
 
-export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
-  const { login, loginWithGoogle, isRoleLoggedIn, switchOrRestoreRole } = useAuth();
+export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN', onLoginSuccess }) {
+  const { login, loginWithGoogle, isRoleLoggedIn, getStoredRoleSession, switchOrRestoreRole } = useAuth();
   const [form, setForm] = useState({ userId: '', password: '' });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
@@ -51,6 +52,15 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const cfg = roleConfigs[selectedRole] || roleConfigs.ADMIN;
+  const isSessionActive = isRoleLoggedIn ? isRoleLoggedIn(selectedRole) : false;
+  const storedSession = getStoredRoleSession ? getStoredRoleSession(selectedRole) : null;
+  const savedUser = storedSession?.user;
+
+  const handleResumeSession = () => {
+    if (switchOrRestoreRole && switchOrRestoreRole(selectedRole)) {
+      if (onLoginSuccess) onLoginSuccess();
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,6 +68,7 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
     setLoading(true);
     try {
       await login(form.userId, form.password, selectedRole);
+      if (onLoginSuccess) onLoginSuccess();
     } catch (err) {
       setError(err.message || 'Invalid credentials. Please try again.');
     } finally {
@@ -70,7 +81,10 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
     setGoogleLoading(true);
     try {
       const googleUser = await signInWithGoogleForAdmin();
-      if (googleUser) await loginWithGoogle(googleUser);
+      if (googleUser) {
+        await loginWithGoogle(googleUser);
+        if (onLoginSuccess) onLoginSuccess();
+      }
     } catch (err) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
       if (err.code === 'auth/configuration-not-found' || err.message?.includes('CONFIGURATION_NOT_FOUND')) {
@@ -87,100 +101,204 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 9980,
-      background: '#f8fafc',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif",
-      overflow: 'hidden', height: '100dvh', width: '100vw',
+      position: 'fixed',
+      inset: 0,
+      zIndex: 9980,
+      background: 'var(--bg-primary, #0b132b)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif",
+      overflow: 'hidden',
+      height: '100dvh',
+      width: '100vw',
     }}>
-      {/* Mobile-constrained container */}
+      {/* Mobile-first app frame */}
       <div style={{
-        width: '100%', maxWidth: 430, height: '100%',
-        background: '#ffffff',
-        display: 'flex', flexDirection: 'column',
+        width: '100%',
+        maxWidth: 440,
+        height: '100%',
+        background: 'var(--bg-card, #111c38)',
+        display: 'flex',
+        flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: 'clamp(14px, 2.5vh, 22px) 24px 18px',
+        padding: 'calc(env(safe-area-inset-top, 0px) + 14px) 20px calc(env(safe-area-inset-bottom, 0px) + 16px)',
         boxSizing: 'border-box',
         overflowY: 'auto',
-        boxShadow: '0 0 50px rgba(0,0,0,0.06)',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+        borderLeft: '1px solid var(--border-subtle, rgba(255,255,255,0.06))',
+        borderRight: '1px solid var(--border-subtle, rgba(255,255,255,0.06))',
       }}>
         {/* Top Header */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          minHeight: 40, marginBottom: 'clamp(10px, 2vh, 18px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          minHeight: 40,
+          marginBottom: 16,
         }}>
           {onBackToHome ? (
             <button
               onClick={onBackToHome}
               aria-label="Back"
               style={{
-                width: 36, height: 36, borderRadius: 12,
-                background: '#f8fafc', border: '1px solid #e2e8f0',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                width: 36,
+                height: 36,
+                borderRadius: 12,
+                background: 'var(--bg-surface, rgba(255,255,255,0.06))',
+                border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
+                color: 'var(--text-primary, #ffffff)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
                 transition: 'all 0.15s ease',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; }}
             >
-              <ArrowLeft size={17} color="#475569" />
+              <ArrowLeft size={18} />
             </button>
           ) : <div style={{ width: 36 }} />}
 
           {/* Role badge */}
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: cfg.badgeBg, border: `1px solid ${cfg.badgeBorder}`,
-            color: cfg.badgeColor, borderRadius: 20,
-            padding: '5px 12px', fontSize: 12, fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            background: cfg.badgeBg,
+            border: `1px solid ${cfg.badgeBorder}`,
+            color: cfg.badgeColor,
+            borderRadius: 100,
+            padding: '5px 12px',
+            fontSize: 12,
+            fontWeight: 700,
           }}>
             <span>{cfg.emoji}</span>
             <span>{cfg.title}</span>
           </div>
+
+          {/* Theme toggle */}
+          <ThemeToggle compact={true} />
         </div>
 
         {/* Content Section */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '8px 0' }}>
           {/* Logo & Title */}
-          <div style={{ textAlign: 'center', marginBottom: 'clamp(14px, 2.5vh, 22px)' }}>
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <div style={{
-              width: 58, height: 58, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #1d4ed8 0%, #06b6d4 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 10px auto',
-              boxShadow: '0 6px 20px rgba(29,78,216,0.3)',
+              width: 56,
+              height: 56,
+              borderRadius: 18,
+              background: `linear-gradient(135deg, ${cfg.color} 0%, #06b6d4 100%)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 12px auto',
+              boxShadow: `0 6px 20px ${cfg.color}35`,
               overflow: 'hidden',
-              border: '2px solid rgba(255,255,255,0.3)',
+              border: '1.5px solid rgba(255,255,255,0.2)',
             }}>
               <img
                 src="/logo-icon.png"
                 alt="Finova"
                 style={{
-                  width: '100%', height: '100%',
-                  objectFit: 'cover',
-                  transform: 'scale(1.18)',
-                  borderRadius: '50%',
+                  width: '80%',
+                  height: '80%',
+                  objectFit: 'contain',
                 }}
                 onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML += '<span style="color:white;font-size:22px;font-weight:900">F</span>'; }}
               />
             </div>
             <h1 style={{
-              fontSize: 'clamp(20px, 5vw, 23px)', fontWeight: 800, color: '#0f172a',
-              margin: '0 0 4px 0', letterSpacing: '-0.3px',
+              fontSize: 'clamp(20px, 5.2vw, 24px)',
+              fontWeight: 800,
+              color: 'var(--text-primary, #ffffff)',
+              margin: '0 0 4px 0',
+              letterSpacing: '-0.3px',
             }}>
               Welcome Back
             </h1>
-            <p style={{ fontSize: 'clamp(12px, 3.2vw, 13px)', color: '#64748b', margin: 0 }}>
+            <p style={{
+              fontSize: 13,
+              color: 'var(--text-muted, #94a3b8)',
+              margin: 0,
+            }}>
               Sign in to manage your {cfg.title.toLowerCase()} portal
             </p>
           </div>
 
+          {/* ACTIVE SESSION QUICK RESTORE CARD (If session already exists) */}
+          {isSessionActive && (
+            <div style={{
+              marginBottom: 18,
+              padding: '14px 16px',
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(37, 99, 235, 0.08) 100%)',
+              border: '1.5px solid rgba(16, 185, 129, 0.35)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontSize: 11.5, fontWeight: 700 }}>
+                  <ShieldCheck size={14} />
+                  <span>Active Session Detected</span>
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>No password needed</span>
+              </div>
+
+              {savedUser?.name && (
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary, #ffffff)' }}>
+                  Logged in as: <span style={{ color: '#10b981' }}>{savedUser.name}</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleResumeSession}
+                style={{
+                  width: '100%',
+                  height: 42,
+                  background: '#10b981',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>Resume Session as {savedUser?.name ? savedUser.name.split(' ')[0] : cfg.title}</span>
+                <ArrowRight size={15} />
+              </button>
+
+              <div style={{
+                textAlign: 'center',
+                fontSize: 11,
+                color: 'var(--text-muted, #94a3b8)',
+                marginTop: 2,
+              }}>
+                Or enter credentials below to change account:
+              </div>
+            </div>
+          )}
+
           {/* Error message */}
           {error && (
             <div style={{
-              background: '#fef2f2', border: '1px solid #fecaca',
-              borderRadius: 12, padding: '9px 12px', marginBottom: 14,
-              fontSize: 12.5, color: '#dc2626', lineHeight: 1.4,
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: 12,
+              padding: '10px 14px',
+              marginBottom: 14,
+              fontSize: 12.5,
+              color: '#f87171',
+              lineHeight: 1.4,
             }}>
               {error}
             </div>
@@ -192,8 +310,12 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
             <div style={{ marginBottom: 12 }}>
               <div style={{ position: 'relative' }}>
                 <User size={16} style={{
-                  position: 'absolute', left: 14, top: '50%',
-                  transform: 'translateY(-50%)', color: '#94a3b8',
+                  position: 'absolute',
+                  left: 14,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-muted, #94a3b8)',
+                  pointerEvents: 'none',
                 }} />
                 <input
                   type="text"
@@ -201,27 +323,45 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
                   value={form.userId}
                   onChange={(e) => setForm({ ...form, userId: e.target.value })}
                   autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck="false"
                   required
                   style={{
-                    width: '100%', height: 48,
-                    paddingLeft: 40, paddingRight: 14,
-                    border: '1.5px solid #e2e8f0', borderRadius: 14,
-                    fontSize: 13.5, color: '#0f172a', outline: 'none',
-                    background: '#f8fafc', boxSizing: 'border-box',
-                    transition: 'border-color 0.15s',
+                    width: '100%',
+                    height: 48,
+                    paddingLeft: 42,
+                    paddingRight: 14,
+                    border: '1.5px solid var(--border-subtle, rgba(255,255,255,0.1))',
+                    borderRadius: 14,
+                    fontSize: 14,
+                    color: 'var(--text-primary, #ffffff)',
+                    outline: 'none',
+                    background: 'var(--bg-surface, rgba(255,255,255,0.04))',
+                    boxSizing: 'border-box',
+                    transition: 'all 0.15s ease',
                   }}
-                  onFocus={e => { e.target.style.borderColor = cfg.color; e.target.style.background = 'white'; }}
-                  onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc'; }}
+                  onFocus={e => {
+                    e.target.style.borderColor = cfg.color;
+                    e.target.style.background = 'var(--bg-surface, rgba(255,255,255,0.07))';
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = 'var(--border-subtle, rgba(255,255,255,0.1))';
+                    e.target.style.background = 'var(--bg-surface, rgba(255,255,255,0.04))';
+                  }}
                 />
               </div>
             </div>
 
             {/* Password input */}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 18 }}>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{
-                  position: 'absolute', left: 14, top: '50%',
-                  transform: 'translateY(-50%)', color: '#94a3b8',
+                  position: 'absolute',
+                  left: 14,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-muted, #94a3b8)',
+                  pointerEvents: 'none',
                 }} />
                 <input
                   type={showPass ? 'text' : 'password'}
@@ -231,24 +371,43 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
                   autoComplete="current-password"
                   required
                   style={{
-                    width: '100%', height: 48,
-                    paddingLeft: 40, paddingRight: 44,
-                    border: '1.5px solid #e2e8f0', borderRadius: 14,
-                    fontSize: 13.5, color: '#0f172a', outline: 'none',
-                    background: '#f8fafc', boxSizing: 'border-box',
-                    transition: 'border-color 0.15s',
+                    width: '100%',
+                    height: 48,
+                    paddingLeft: 42,
+                    paddingRight: 44,
+                    border: '1.5px solid var(--border-subtle, rgba(255,255,255,0.1))',
+                    borderRadius: 14,
+                    fontSize: 14,
+                    color: 'var(--text-primary, #ffffff)',
+                    outline: 'none',
+                    background: 'var(--bg-surface, rgba(255,255,255,0.04))',
+                    boxSizing: 'border-box',
+                    transition: 'all 0.15s ease',
                   }}
-                  onFocus={e => { e.target.style.borderColor = cfg.color; e.target.style.background = 'white'; }}
-                  onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc'; }}
+                  onFocus={e => {
+                    e.target.style.borderColor = cfg.color;
+                    e.target.style.background = 'var(--bg-surface, rgba(255,255,255,0.07))';
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = 'var(--border-subtle, rgba(255,255,255,0.1))';
+                    e.target.style.background = 'var(--bg-surface, rgba(255,255,255,0.04))';
+                  }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
                   style={{
-                    position: 'absolute', right: 10, top: '50%',
-                    transform: 'translateY(-50%)', background: 'none',
-                    border: 'none', color: '#94a3b8', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', padding: 4,
+                    position: 'absolute',
+                    right: 12,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted, #94a3b8)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: 4,
                   }}
                 >
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -261,46 +420,67 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
               type="submit"
               disabled={loading}
               style={{
-                width: '100%', height: 48,
-                background: loading ? '#93c5fd' : cfg.color,
-                color: 'white', border: 'none', borderRadius: 24,
-                fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: `0 6px 20px ${cfg.color}35`,
+                width: '100%',
+                height: 48,
+                background: loading ? 'rgba(59, 130, 246, 0.5)' : `linear-gradient(135deg, ${cfg.color} 0%, #2563eb 100%)`,
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 14,
+                fontSize: 14.5,
+                fontWeight: 700,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow: `0 6px 20px ${cfg.color}40`,
                 transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
               }}
-              onMouseEnter={e => { if (!loading) e.currentTarget.style.opacity = '0.92'; }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
             >
-              {loading ? 'Signing in...' : `Login as ${cfg.title}`}
+              {loading ? 'Authenticating...' : `Sign in as ${cfg.title}`}
             </button>
           </form>
 
           {/* Google Sign-In for Super Admin */}
           {cfg.showGoogle && (
-            <div style={{ marginTop: 14 }}>
+            <div style={{ marginTop: 16 }}>
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                marginBottom: 12,
               }}>
-                <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-                <span style={{ fontSize: 11.5, color: '#94a3b8', fontWeight: 500 }}>Or continue with</span>
-                <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+                <div style={{ flex: 1, height: 1, background: 'var(--border-subtle, rgba(255,255,255,0.1))' }} />
+                <span style={{ fontSize: 11.5, color: 'var(--text-muted, #94a3b8)', fontWeight: 500 }}>Or continue with</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--border-subtle, rgba(255,255,255,0.1))' }} />
               </div>
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={googleLoading || loading}
                 style={{
-                  width: '100%', height: 46,
-                  background: 'white', border: '1.5px solid #e2e8f0',
-                  borderRadius: 23, fontSize: 13.5, fontWeight: 600,
-                  color: '#0f172a', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', gap: 10,
+                  width: '100%',
+                  height: 46,
+                  background: 'var(--bg-surface, rgba(255,255,255,0.06))',
+                  border: '1px solid var(--border-subtle, rgba(255,255,255,0.15))',
+                  borderRadius: 14,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: 'var(--text-primary, #ffffff)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
                   cursor: (googleLoading || loading) ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                   transition: 'all 0.15s ease',
                 }}
-                onMouseEnter={e => { if (!googleLoading && !loading) e.currentTarget.style.background = '#f8fafc'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'white'; }}
+                onMouseEnter={e => {
+                  if (!googleLoading && !loading) e.currentTarget.style.background = 'var(--bg-surface, rgba(255,255,255,0.1))';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'var(--bg-surface, rgba(255,255,255,0.06))';
+                }}
               >
                 <svg width="17" height="17" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
@@ -308,17 +488,21 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN' }) {
                   <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
                   <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
                 </svg>
-                <span>{googleLoading ? 'Redirecting to Google...' : 'Continue with Google'}</span>
+                <span>{googleLoading ? 'Connecting to Google...' : 'Sign in with Google'}</span>
               </button>
             </div>
           )}
         </div>
 
-        {/* Home indicator */}
+        {/* Mobile Home Bar */}
         <div style={{
-          width: 120, height: 4, background: '#0f172a',
-          borderRadius: 2, opacity: 0.18,
-          margin: '12px auto 0', flexShrink: 0,
+          width: 120,
+          height: 4,
+          background: 'var(--text-primary, #ffffff)',
+          borderRadius: 2,
+          opacity: 0.22,
+          margin: '12px auto 0',
+          flexShrink: 0,
         }} />
       </div>
     </div>

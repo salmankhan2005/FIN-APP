@@ -139,11 +139,17 @@ function OnboardingGate() {
 
   const handleSelectRole = (role) => {
     setSelectedRole(role);
+    // 1. Try to restore active session for this role
+    if (switchOrRestoreRole && switchOrRestoreRole(role)) {
+      setStep(STEP_APP);
+      return;
+    }
+    // 2. If already logged in as this role in memory
     if (user && ((role === 'ADMIN' && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) || user.role === role)) {
       setStep(STEP_APP);
       return;
     }
-    // Not currently logged in as this role -> proceed to login page to enter credentials
+    // 3. Not currently logged in as this role -> proceed to login page to enter credentials
     setStep(STEP_LOGIN);
   };
 
@@ -155,14 +161,15 @@ function OnboardingGate() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f8fafc',
+        background: 'var(--bg-primary, #0f172a)',
+        color: 'var(--text-primary, #f8fafc)',
         gap: 16
       }}>
         <div className="spinner" style={{ width: 44, height: 44 }} />
-        <p style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', margin: 0 }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary, #f8fafc)', margin: 0 }}>
           Connecting your Google Account...
         </p>
-        <span style={{ fontSize: 12.5, color: '#64748b' }}>
+        <span style={{ fontSize: 12.5, color: 'var(--text-muted, #94a3b8)' }}>
           Opening your dashboard securely
         </span>
       </div>
@@ -189,6 +196,7 @@ function OnboardingGate() {
         <LoginPage
           selectedRole={selectedRole}
           onBackToHome={() => setStep(STEP_ROLE)}
+          onLoginSuccess={() => setStep(STEP_APP)}
         />
       )}
       {step === STEP_APP && <AuthenticatedApp />}

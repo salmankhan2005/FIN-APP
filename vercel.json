@@ -1,8 +1,8 @@
 {
-  "buildCommand": "cd frontend 2>/dev/null || true; npm run build",
+  "buildCommand": "if [ -d frontend ]; then cd frontend && npm run build; else npm run build; fi",
   "outputDirectory": "dist",
   "framework": "vite",
-  "installCommand": "cd frontend 2>/dev/null || true; npm install",
+  "installCommand": "if [ -d frontend ]; then cd frontend && npm install; else npm install; fi",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]

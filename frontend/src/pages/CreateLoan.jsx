@@ -64,23 +64,49 @@ export default function CreateLoan() {
 
     if (isWithoutInterest) {
       const deduction = parseFloat(form.advanceDeduction || 0);
-      const weeksVal = parseInt(form.tenure || 10);
+      const tenureVal = parseInt(form.tenure || (form.tenureUnit === 'DAYS' ? 30 : form.tenureUnit === 'WEEKS' ? 10 : 12));
       const disbursed = p - deduction;
-      const isDaily = form.repaymentFrequency === 'DAILY';
-      const totalInstallments = isDaily ? (weeksVal * 7) : weeksVal;
+      const freq = form.repaymentFrequency || (form.tenureUnit === 'DAYS' ? 'DAILY' : form.tenureUnit === 'WEEKS' ? 'WEEKLY' : 'MONTHLY');
+      
+      let totalInstallments = tenureVal;
+      if (freq === 'DAILY') {
+        totalInstallments = form.tenureUnit === 'WEEKS' ? tenureVal * 7 : form.tenureUnit === 'MONTHS' ? tenureVal * 30 : form.tenureUnit === 'YEARS' ? tenureVal * 365 : tenureVal;
+      } else if (freq === 'WEEKLY') {
+        totalInstallments = form.tenureUnit === 'MONTHS' ? tenureVal * 4 : form.tenureUnit === 'YEARS' ? tenureVal * 52 : tenureVal;
+      } else if (freq === 'MONTHLY') {
+        totalInstallments = form.tenureUnit === 'YEARS' ? tenureVal * 12 : tenureVal;
+      }
+
+      totalInstallments = Math.max(1, totalInstallments);
       const due = totalInstallments > 0 ? (p / totalInstallments) : 0;
+      
+      const freqLabels = {
+        DAILY: 'Daily Repayment',
+        WEEKLY: 'Weekly Repayment',
+        MONTHLY: 'Monthly Repayment',
+        YEARLY: 'Yearly Repayment',
+      };
+
+      const unitLabels = {
+        DAILY: 'day',
+        WEEKLY: 'week',
+        MONTHLY: 'month',
+        YEARLY: 'year',
+      };
+
       return {
         isWithoutInterest: true,
-        disbursed: disbursed,
-        deduction: deduction,
-        due: due,
-        tenure: weeksVal,
-        totalInstallments: totalInstallments,
+        disbursed,
+        deduction,
+        due,
+        tenure: tenureVal,
+        tenureUnit: form.tenureUnit || 'WEEKS',
+        totalInstallments,
         totalRepayable: p,
-        isDaily: isDaily,
-        unitLabel: isDaily ? 'daily' : 'weekly',
-        unitLabelPlural: 'weeks',
-        frequencyLabel: isDaily ? 'Daily (7 days/week)' : 'Weekly (1 payment/week)',
+        frequency: freq,
+        unitLabel: unitLabels[freq] || 'installment',
+        unitLabelPlural: form.tenureUnit?.toLowerCase() || 'periods',
+        frequencyLabel: freqLabels[freq] || freq,
       };
     } else if (form.interestType === 'EMI') {
       const r = parseFloat(form.interestRate);
@@ -95,11 +121,11 @@ export default function CreateLoan() {
       
       return {
         isEMI: true,
-        installmentDue: installmentDue,
-        totalPayable: totalPayable,
-        totalInterest: totalInterest,
+        installmentDue,
+        totalPayable,
+        totalInterest,
         tenure: tenureVal,
-        unitLabel: form.tenureUnit === 'MONTHS' ? 'monthly' : form.tenureUnit === 'WEEKS' ? 'weekly' : 'daily',
+        unitLabel: form.tenureUnit === 'MONTHS' ? 'monthly' : form.tenureUnit === 'WEEKS' ? 'weekly' : form.tenureUnit === 'YEARS' ? 'yearly' : 'daily',
         unitLabelPlural: form.tenureUnit.toLowerCase()
       };
     } else {
@@ -109,7 +135,7 @@ export default function CreateLoan() {
         isWithoutInterest: false,
         isEMI: false,
         interest: (p * r / 100).toFixed(0),
-        period: form.tenureUnit === 'MONTHS' ? 'month' : form.tenureUnit === 'WEEKS' ? 'week' : 'day'
+        period: form.tenureUnit === 'MONTHS' ? 'month' : form.tenureUnit === 'WEEKS' ? 'week' : form.tenureUnit === 'YEARS' ? 'year' : 'day'
       };
     }
   })();
@@ -123,7 +149,7 @@ export default function CreateLoan() {
       const principal = parseFloat(form.principalAmount);
       const fee = isWithoutInterest ? parseFloat(form.advanceDeduction || 0) : 0;
       const rate = isWithoutInterest ? 0 : parseFloat(form.interestRate || 0);
-      const tenureVal = (isWithoutInterest || isEMI) ? parseInt(form.tenure) : (form.tenureUnit === 'WEEKS' ? 52 : form.tenureUnit === 'MONTHS' ? 12 : 365);
+      const tenureVal = (isWithoutInterest || isEMI) ? parseInt(form.tenure) : (form.tenureUnit === 'WEEKS' ? 52 : form.tenureUnit === 'MONTHS' ? 12 : form.tenureUnit === 'YEARS' ? 5 : 365);
 
       const res = await loansAPI.create({
         ...form,
@@ -131,7 +157,7 @@ export default function CreateLoan() {
         interestRate: rate,
         processingFee: fee,
         advanceDeduction: fee,
-        repaymentFrequency: form.repaymentFrequency || (isWithoutInterest ? 'DAILY' : (form.tenureUnit === 'DAYS' ? 'DAILY' : form.tenureUnit === 'WEEKS' ? 'WEEKLY' : 'MONTHLY')),
+        repaymentFrequency: form.repaymentFrequency || (isWithoutInterest ? (form.tenureUnit === 'DAYS' ? 'DAILY' : form.tenureUnit === 'WEEKS' ? 'WEEKLY' : 'MONTHLY') : (form.tenureUnit === 'DAYS' ? 'DAILY' : form.tenureUnit === 'WEEKS' ? 'WEEKLY' : form.tenureUnit === 'YEARS' ? 'YEARLY' : 'MONTHLY')),
         tenure: tenureVal,
         tenureUnit: form.tenureUnit,
         alreadyCollectedAmount: parseFloat(form.alreadyCollectedAmount || 0),
@@ -343,17 +369,50 @@ export default function CreateLoan() {
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Amount subtracted upfront before disbursing to the borrower</span>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Repayment Period (Weeks) *</label>
-                <input className="form-input" type="number" min="1" placeholder="e.g. 10" value={form.tenure} onChange={e => set('tenure', e.target.value)} required />
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Total schedule length in weeks (e.g. 10 weeks)</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Tenure Interval *</label>
+                  <select
+                    className="form-select"
+                    value={form.tenureUnit || 'WEEKS'}
+                    onChange={e => {
+                      const u = e.target.value;
+                      setForm(prev => ({
+                        ...prev,
+                        tenureUnit: u,
+                        repaymentFrequency: u === 'DAYS' ? 'DAILY' : u === 'WEEKS' ? 'WEEKLY' : u === 'YEARS' ? 'YEARLY' : 'MONTHLY',
+                        tenure: u === 'DAYS' ? '30' : u === 'WEEKS' ? '10' : u === 'YEARS' ? '1' : '6',
+                      }));
+                    }}
+                  >
+                    <option value="DAYS">Daily (நாட்கள்)</option>
+                    <option value="WEEKS">Weekly (வாரங்கள்)</option>
+                    <option value="MONTHS">Monthly (மாதங்கள்)</option>
+                    <option value="YEARS">Yearly (ஆண்டுகள்)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Number of {(form.tenureUnit || 'WEEKS').charAt(0) + (form.tenureUnit || 'WEEKS').slice(1).toLowerCase()} *</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 10"
+                    value={form.tenure}
+                    onChange={e => set('tenure', e.target.value)}
+                    required
+                  />
+                </div>
               </div>
 
               <div className="form-group">
                 <label className="form-label">Repayment Frequency *</label>
-                <select className="form-select" value={form.repaymentFrequency} onChange={e => set('repaymentFrequency', e.target.value)}>
-                  <option value="DAILY">Daily Repayment (7 days/week organized by Week 1 to 10)</option>
-                  <option value="WEEKLY">Weekly Repayment (1 collection/week)</option>
+                <select className="form-select" value={form.repaymentFrequency || 'WEEKLY'} onChange={e => set('repaymentFrequency', e.target.value)}>
+                  <option value="DAILY">Daily Collections (தினசரி தவணை)</option>
+                  <option value="WEEKLY">Weekly Collections (வாராந்திர தவணை)</option>
+                  <option value="MONTHLY">Monthly Collections (மாதாந்திர தவணை)</option>
+                  <option value="YEARLY">Yearly Collections (ஆண்டு தவணை)</option>
                 </select>
               </div>
             </>
@@ -364,18 +423,21 @@ export default function CreateLoan() {
                 <input className="form-input" type="number" step="0.1" min="0" placeholder="e.g. 3" value={form.interestRate} onChange={e => set('interestRate', e.target.value)} required />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Collection Frequency *</label>
-                <select className="form-select" value={form.tenureUnit} onChange={e => set('tenureUnit', e.target.value)}>
-                  <option value="MONTHS">Monthly</option>
-                  <option value="WEEKS">Weekly</option>
-                  <option value="DAYS">Daily</option>
-                </select>
-              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Collection Frequency *</label>
+                  <select className="form-select" value={form.tenureUnit} onChange={e => set('tenureUnit', e.target.value)}>
+                    <option value="DAYS">Daily</option>
+                    <option value="WEEKS">Weekly</option>
+                    <option value="MONTHS">Monthly</option>
+                    <option value="YEARS">Yearly</option>
+                  </select>
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Number of {form.tenureUnit.charAt(0) + form.tenureUnit.slice(1).toLowerCase()} *</label>
-                <input className="form-input" type="number" min="1" placeholder={form.tenureUnit === 'MONTHS' ? 'e.g. 12' : 'e.g. 52'} value={form.tenure} onChange={e => set('tenure', e.target.value)} required />
+                <div className="form-group">
+                  <label className="form-label">Number of {form.tenureUnit.charAt(0) + form.tenureUnit.slice(1).toLowerCase()} *</label>
+                  <input className="form-input" type="number" min="1" placeholder={form.tenureUnit === 'MONTHS' ? 'e.g. 12' : 'e.g. 52'} value={form.tenure} onChange={e => set('tenure', e.target.value)} required />
+                </div>
               </div>
             </>
           ) : (
@@ -388,9 +450,10 @@ export default function CreateLoan() {
               <div className="form-group">
                 <label className="form-label">Collection Frequency *</label>
                 <select className="form-select" value={form.tenureUnit} onChange={e => set('tenureUnit', e.target.value)}>
+                  <option value="DAYS">Daily</option>
                   <option value="WEEKS">Weekly</option>
                   <option value="MONTHS">Monthly</option>
-                  <option value="DAYS">Daily</option>
+                  <option value="YEARS">Yearly</option>
                 </select>
               </div>
             </>
@@ -411,7 +474,7 @@ export default function CreateLoan() {
         {preview && (
           preview.isWithoutInterest ? (
             <div className="card" style={{ marginTop: 12, background: 'rgba(16,185,129,0.08)', borderColor: 'rgba(16,185,129,0.2)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 100px), 1fr))', gap: 8, textAlign: 'center' }}>
                 <div>
                   <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>LOAN AMOUNT</div>
                   <div style={{ fontSize: 16, fontWeight: 800 }}>₹{preview.totalRepayable.toLocaleString('en-IN')}</div>
@@ -425,10 +488,10 @@ export default function CreateLoan() {
                   <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent-400)' }}>₹{preview.disbursed.toLocaleString('en-IN')}</div>
                 </div>
               </div>
-              <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: 10, paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: 10, paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 <div>
                   <span style={{ fontSize: 12, fontWeight: 700 }}>{preview.frequencyLabel}</span>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{preview.totalInstallments} installments across {preview.tenure} weeks</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{preview.totalInstallments} installments across {preview.tenure} {preview.unitLabelPlural}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>PER {preview.unitLabel.toUpperCase()} DUE</div>

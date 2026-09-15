@@ -15,6 +15,7 @@ const round2 = (n) => Math.round(n * 100) / 100;
 function getBatchSize(tenureUnit) {
   if (tenureUnit === 'WEEKS') return 52;
   if (tenureUnit === 'MONTHS') return 12;
+  if (tenureUnit === 'YEARS') return 5;
   return 365; // DAYS
 }
 
@@ -23,15 +24,17 @@ function getBatchSize(tenureUnit) {
  * @param {string} loanId
  * @param {number} principalPerPeriod
  * @param {number} interestPerPeriod
- * @param {string} tenureUnit - WEEKS | MONTHS | DAYS
+ * @param {string} tenureUnit - DAYS | WEEKS | MONTHS | YEARS
  * @param {Date} startFrom - starting date
  * @param {number} startNo - starting installment number
  * @param {number} count - number of installments
- * @param {string} frequency - DAILY | WEEKLY | MONTHLY
+ * @param {string} frequency - DAILY | WEEKLY | MONTHLY | YEARLY
  */
 function generateInstallments(loanId, principalPerPeriod, interestPerPeriod, tenureUnit, startFrom, startNo, count, frequency = null) {
   const installments = [];
   const isDaily = frequency === 'DAILY' || tenureUnit === 'DAYS';
+  const isWeekly = frequency === 'WEEKLY' || (!frequency && tenureUnit === 'WEEKS');
+  const isYearly = frequency === 'YEARLY' || (!frequency && tenureUnit === 'YEARS');
 
   for (let i = 0; i < count; i++) {
     const dueDate = new Date(startFrom);
@@ -43,8 +46,12 @@ function generateInstallments(loanId, principalPerPeriod, interestPerPeriod, ten
       const absIndex = (startNo - 1) + i;
       weekNo = Math.floor(absIndex / 7) + 1;
       dayNo = (absIndex % 7) + 1;
-    } else if (tenureUnit === 'WEEKS' || frequency === 'WEEKLY') {
+    } else if (isWeekly) {
       dueDate.setDate(dueDate.getDate() + offset * 7);
+      weekNo = (startNo - 1) + i + 1;
+      dayNo = 1;
+    } else if (isYearly) {
+      dueDate.setFullYear(dueDate.getFullYear() + offset);
       weekNo = (startNo - 1) + i + 1;
       dayNo = 1;
     } else {
@@ -330,11 +337,20 @@ router.post('/', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => 
     let frequency = repaymentFrequency || (tenureUnit === 'DAYS' ? 'DAILY' : tenureUnit === 'WEEKS' ? 'WEEKLY' : 'MONTHLY');
 
     if (interestType === 'WITHOUT_INTEREST') {
-      const isDaily = frequency === 'DAILY' || tenureUnit === 'DAYS';
-      const weeksOrDays = tenure ? parseInt(tenure) : 10;
+      const tenureVal = tenure ? parseInt(tenure) : (tenureUnit === 'DAYS' ? 30 : tenureUnit === 'WEEKS' ? 10 : 12);
       
-      // If daily frequency, 10 weeks = 70 daily installments
-      batchSize = isDaily ? (tenureUnit === 'DAYS' ? weeksOrDays : weeksOrDays * 7) : weeksOrDays;
+      // Calculate total installments based on frequency vs tenureUnit
+      if (frequency === 'DAILY') {
+        batchSize = (tenureUnit === 'WEEKS') ? tenureVal * 7 : (tenureUnit === 'MONTHS') ? tenureVal * 30 : (tenureUnit === 'YEARS') ? tenureVal * 365 : tenureVal;
+      } else if (frequency === 'WEEKLY') {
+        batchSize = (tenureUnit === 'MONTHS') ? tenureVal * 4 : (tenureUnit === 'YEARS') ? tenureVal * 52 : tenureVal;
+      } else if (frequency === 'MONTHLY') {
+        batchSize = (tenureUnit === 'YEARS') ? tenureVal * 12 : tenureVal;
+      } else {
+        batchSize = tenureVal;
+      }
+      batchSize = Math.max(1, batchSize);
+
       interestPerPeriod = 0;
       principalPerPeriod = parseFloat(principalAmount) / batchSize;
       installmentAmount = principalPerPeriod;
@@ -351,7 +367,7 @@ router.post('/', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => 
       totalInterest = interestPerPeriod * batchSize;
       totalPayable = parseFloat(principalAmount) + totalInterest;
     } else {
-      batchSize = getBatchSize(tenureUnit);
+      batchSize = tenure ? parseInt(tenure) : getBatchSize(tenureUnit);
       interestPerPeriod = parseFloat(principalAmount) * (parseFloat(interestRate) / 100);
       principalPerPeriod = 0;
       installmentAmount = interestPerPeriod;
@@ -368,9 +384,9 @@ router.post('/', authenticate, authorize('ADMIN', 'AGENT'), async (req, res) => 
     // End date calculation
     const end = new Date(start);
     if (frequency === 'DAILY' || tenureUnit === 'DAYS') end.setDate(end.getDate() + batchSize);
-    else if (tenureUnit === 'MONTHS') end.setMonth(end.getMonth() + batchSize);
-    else if (tenureUnit === 'WEEKS' || frequency === 'WEEKLY') end.setDate(end.getDate() + batchSize * 7);
-    else end.setDate(end.getDate() + batchSize);
+    else if (frequency === 'WEEKLY' || tenureUnit === 'WEEKS') end.setDate(end.getDate() + batchSize * 7);
+    else if (frequency === 'YEARLY' || tenureUnit === 'YEARS') end.setFullYear(end.getFullYear() + batchSize);
+    else end.setMonth(end.getMonth() + batchSize);
 
     // Generate sequential loan number
     const lastLoan = await prisma.loan.findFirst({

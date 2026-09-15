@@ -298,27 +298,22 @@ export default function CustomersPage() {
           </button>
         </div>
       ) : viewMode === 'table' ? (
-        /* TABLE VIEW (Crisp, Perfectly Aligned) */
+        /* TABLE VIEW (Minimal, Streamlined & Perfectly Aligned) */
         <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: '28%' }}>Customer</th>
-                <th style={{ width: '20%' }}>Contact</th>
-                <th style={{ width: '16%' }}>City / Location</th>
-                <th style={{ width: '13%' }}>Active Loans</th>
-                <th style={{ width: '15%' }}>Jamin Guarantor</th>
-                <th style={{ width: '8%', textAlign: 'right' }}>Actions</th>
+                <th style={{ width: '38%' }}>Customer Name</th>
+                <th style={{ width: '30%' }}>Contact Number</th>
+                <th style={{ width: '22%' }}>Guarantor (Jamin)</th>
+                <th style={{ width: '10%', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredCustomers.map(c => {
-                const hasActive = (c.loans && c.loans.length > 0) || (c.activeLoans && c.activeLoans > 0);
-                const loansCount = c.loans?.length || c.activeLoans || 0;
-
                 return (
                   <tr key={c.id}>
-                    <td data-label="Customer">
+                    <td data-label="Customer Name">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {renderAvatar(c)}
                         <div style={{ minWidth: 0 }}>
@@ -338,21 +333,11 @@ export default function CustomersPage() {
                           >
                             {c.name}
                           </Link>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                            <span className="badge badge-info" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 700 }}>
-                              {c.idType || 'AADHAR'}
-                            </span>
-                            {c.idNumber && (
-                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                {c.idNumber}
-                              </span>
-                            )}
-                          </div>
                         </div>
                       </div>
                     </td>
 
-                    <td data-label="Contact">
+                    <td data-label="Contact Number">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <a
                           href={`tel:${c.phone}`}
@@ -390,39 +375,13 @@ export default function CustomersPage() {
                       </div>
                     </td>
 
-                    <td data-label="City / Location">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13 }}>
-                        <MapPin size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                        <span style={{ fontWeight: 500 }}>{c.city || 'N/A'}</span>
-                      </div>
-                    </td>
-
-                    <td data-label="Active Loans">
-                      {hasActive ? (
-                        <span className="badge badge-success" style={{ fontSize: 11, padding: '3px 8px' }}>
-                          {loansCount} Active
-                        </span>
-                      ) : (
-                        <span className="badge badge-muted" style={{ fontSize: 11, padding: '3px 8px' }}>
-                          None
-                        </span>
-                      )}
-                    </td>
-
-                    <td data-label="Jamin Guarantor">
+                    <td data-label="Guarantor (Jamin)">
                       {c.jaminName ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <ShieldCheck size={14} style={{ color: '#10b981', flexShrink: 0 }} />
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {c.jaminName}
-                            </div>
-                            {c.jaminRelationship && (
-                              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                                {c.jaminRelationship.split(' ')[0]}
-                              </div>
-                            )}
-                          </div>
+                          <span style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {c.jaminName}
+                          </span>
                         </div>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>—</span>
@@ -440,7 +399,7 @@ export default function CustomersPage() {
                             color: 'var(--primary-600)',
                             background: 'rgba(99, 102, 241, 0.06)'
                           }}
-                          title="View Details"
+                          title="View Customer Details"
                         >
                           <Eye size={15} />
                         </Link>
@@ -453,11 +412,10 @@ export default function CustomersPage() {
                               className="btn btn-ghost btn-sm"
                               style={{
                                 padding: '6px 8px', borderRadius: 8,
-                                color: '#f59e0b', background: 'rgba(245,158,11,0.10)',
-                                border: '1px solid rgba(245,158,11,0.25)'
+                                color: '#f59e0b', background: 'rgba(245, 158, 11, 0.08)'
                               }}
                               onClick={() => setCredModalCustomer(c)}
-                              title="Reset / Update App Credentials"
+                              title="Reset App Credentials"
                             >
                               <RefreshCw size={15} />
                             </button>
@@ -469,11 +427,9 @@ export default function CustomersPage() {
                               disabled
                               style={{
                                 padding: '6px 8px', borderRadius: 8,
-                                color: '#9ca3af', background: 'rgba(156,163,175,0.10)',
-                                border: '1px solid rgba(156,163,175,0.2)',
-                                cursor: 'not-allowed', opacity: 0.6
+                                color: '#9ca3af', opacity: 0.5, cursor: 'not-allowed'
                               }}
-                              title="Credentials already set — only Admin can reset"
+                              title="Credentials already set"
                             >
                               <Lock size={15} />
                             </button>
@@ -530,82 +486,67 @@ export default function CustomersPage() {
           </table>
         </div>
       ) : (
-        /* GRID / CARDS VIEW */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+        /* GRID / CARDS VIEW (Minimal, Streamlined) */
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
           {filteredCustomers.map(c => {
-            const hasActive = (c.loans && c.loans.length > 0) || (c.activeLoans && c.activeLoans > 0);
-            const loansCount = c.loans?.length || c.activeLoans || 0;
-
             return (
               <div
                 key={c.id}
                 className="card"
                 style={{
-                  padding: 16,
+                  padding: 14,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 12,
+                  gap: 10,
                   transition: 'all 0.2s ease',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 14,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
                 }}
               >
-                {/* Top: Avatar, Name, ID & Loans badge */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                    {renderAvatar(c)}
-                    <div style={{ minWidth: 0 }}>
-                      <Link
-                        to={`/customers/${c.id}`}
-                        style={{
-                          fontWeight: 800,
-                          fontSize: 15,
-                          color: 'var(--text-primary)',
-                          textDecoration: 'none',
-                          display: 'block',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {c.name}
-                      </Link>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                        <span className="badge badge-info" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 700 }}>
-                          {c.idType || 'AADHAR'}
-                        </span>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.city}</span>
-                      </div>
-                    </div>
+                {/* Header: Avatar, Name */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  {renderAvatar(c)}
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <Link
+                      to={`/customers/${c.id}`}
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 15,
+                        color: 'var(--text-primary)',
+                        textDecoration: 'none',
+                        display: 'block',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                      title={c.name}
+                    >
+                      {c.name}
+                    </Link>
                   </div>
-                  <span className={`badge ${hasActive ? 'badge-success' : 'badge-muted'}`} style={{ fontSize: 10, flexShrink: 0 }}>
-                    {hasActive ? `${loansCount} Active` : 'No Loans'}
-                  </span>
                 </div>
 
-                {/* Details snippet */}
-                <div style={{ background: 'rgba(0,0,0,0.02)', padding: '10px 12px', borderRadius: 10, fontSize: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {/* Minimal details: Phone & Jamin */}
+                <div style={{ background: 'rgba(0,0,0,0.02)', padding: '8px 10px', borderRadius: 8, fontSize: 12.5, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Phone size={12} /> Phone
+                      <Phone size={12} /> Contact
                     </span>
                     <a href={`tel:${c.phone}`} style={{ fontWeight: 600, color: 'inherit', textDecoration: 'none' }}>
                       {c.phone}
                     </a>
                   </div>
-                  {c.jaminName && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px dashed var(--border-subtle)' }}>
-                      <span style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                        <ShieldCheck size={12} /> Jamin
-                      </span>
-                      <span style={{ fontWeight: 600 }}>{c.jaminName}</span>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 5, borderTop: '1px dashed var(--border-subtle)' }}>
+                    <span style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                      <ShieldCheck size={12} /> Guarantor
+                    </span>
+                    <span style={{ fontWeight: 600 }}>{c.jaminName || '—'}</span>
+                  </div>
                 </div>
 
-                {/* Footer action buttons */}
-                <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 8, borderTop: '1px solid var(--border-subtle)' }}>
+                {/* Actions row */}
+                <div style={{ display: 'flex', gap: 6, marginTop: 'auto', paddingTop: 8, borderTop: '1px solid var(--border-subtle)' }}>
                   <Link
                     to={`/customers/${c.id}`}
                     className="btn btn-primary btn-sm"
@@ -622,29 +563,18 @@ export default function CustomersPage() {
                   >
                     <Edit2 size={14} />
                   </button>
-                  {/* Credential button — locked after first creation unless admin */}
                   {c.hasCredentials ? (
                     canResetCredentials ? (
                       <button
                         type="button"
                         className="btn btn-ghost btn-sm"
                         onClick={() => setCredModalCustomer(c)}
-                        title="Reset / Update App Credentials"
+                        title="Reset App Credentials"
                         style={{ border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, color: '#f59e0b', background: 'rgba(245,158,11,0.08)' }}
                       >
                         <RefreshCw size={14} />
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        disabled
-                        title="Credentials already set — only Admin can reset"
-                        style={{ border: '1px solid rgba(156,163,175,0.2)', borderRadius: 8, color: '#9ca3af', opacity: 0.5, cursor: 'not-allowed' }}
-                      >
-                        <Lock size={14} />
-                      </button>
-                    )
+                    ) : null
                   ) : (
                     <button
                       type="button"
@@ -661,7 +591,7 @@ export default function CustomersPage() {
                     className="btn btn-ghost btn-sm"
                     onClick={() => handleDelete(c)}
                     title="Delete Customer"
-                    style={{ border: '1px solid var(--border-subtle)', borderRadius: 8, color: 'var(--danger-500)' }}
+                    style={{ border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 8, color: 'var(--danger-500)', background: 'rgba(239, 68, 68, 0.04)' }}
                   >
                     <Trash2 size={14} />
                   </button>

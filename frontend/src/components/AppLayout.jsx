@@ -5,14 +5,11 @@ import { notificationsAPI } from '../services/api';
 import {
   LayoutDashboard, Users, Landmark, HandCoins, ChevronRight, Plus,
   FileBarChart, Shield, UserCog, LogOut, Menu, X, Settings, Bell, History,
-  BookOpen, Banknote, Sparkles, HelpCircle
+  BookOpen, Banknote
 } from 'lucide-react';
-import ThemeToggle from './ThemeToggle';
-import { useTour } from '../contexts/TourContext';
 
 export default function AppLayout() {
   const { user, logout, isSuperAdmin, isAdmin, isCustomer } = useAuth();
-  const { startTour } = useTour();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
@@ -145,33 +142,6 @@ export default function AppLayout() {
           <span className="mobile-header-title">{currentPage}</span>
         </div>
         <div className="mobile-header-user" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* Guide Tour Launcher Button in Mobile Header */}
-          <button
-            onClick={() => startTour()}
-            title="App Voice Guided Tour (செயலி வழிகாட்டி)"
-            aria-label="Guided Tour"
-            style={{
-              background: 'rgba(56, 189, 248, 0.14)',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              color: '#38bdf8',
-              padding: '4px 9px',
-              borderRadius: '100px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              fontSize: 11,
-              fontWeight: 700,
-              transition: 'all 150ms ease',
-            }}
-          >
-            <Sparkles size={12} />
-            <span>Guide</span>
-          </button>
-
-          {/* Theme Toggle in Mobile Header */}
-          <ThemeToggle compact={true} />
-
           {/* Notification Bell Button */}
           <div style={{ position: 'relative' }}>
             <button
@@ -396,40 +366,6 @@ export default function AppLayout() {
           </nav>
 
           <div className="sidebar-user">
-            {/* Interactive Voice Tour Trigger */}
-            <button
-              id="sidebar-app-tour-btn"
-              onClick={() => {
-                setSidebarOpen(false);
-                startTour();
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                width: '100%',
-                padding: '8px 10px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid rgba(56, 189, 248, 0.35)',
-                background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, rgba(37, 99, 235, 0.08) 100%)',
-                color: '#38bdf8',
-                cursor: 'pointer',
-                fontSize: 12.5,
-                fontWeight: 700,
-                transition: 'all 150ms ease',
-              }}
-            >
-              <img 
-                src="/guide_avatar_bust.png" 
-                alt="Voice Tour Guide" 
-                style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #38bdf8' }} 
-              />
-              <span style={{ flex: 1, textAlign: 'left' }}>App Tour (வழிகாட்டி)</span>
-              <Sparkles size={14} style={{ color: '#38bdf8' }} />
-            </button>
-
-            {/* Theme Toggle */}
-            <ThemeToggle />
             {/* User info + logout row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div className="sidebar-avatar">

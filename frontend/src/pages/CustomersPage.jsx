@@ -130,29 +130,13 @@ export default function CustomersPage() {
   });
 
   const renderAvatar = (c) => {
-    if (c.photoUrl) {
-      return (
-        <img
-          src={c.photoUrl}
-          alt={c.name}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            objectFit: 'cover',
-            border: '2px solid var(--primary-400)',
-            flexShrink: 0
-          }}
-        />
-      );
-    }
     return (
       <div
         style={{
           width: 40,
           height: 40,
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, var(--primary-600), var(--accent-500))',
+          background: 'linear-gradient(135deg, var(--primary-600, #2563eb), var(--accent-500, #38bdf8))',
           color: '#fff',
           display: 'flex',
           alignItems: 'center',
@@ -163,7 +147,7 @@ export default function CustomersPage() {
           boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
         }}
       >
-        {c.name?.charAt(0).toUpperCase() || 'C'}
+        {c.name ? c.name.charAt(0).toUpperCase() : 'C'}
       </div>
     );
   };

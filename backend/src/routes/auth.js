@@ -208,24 +208,11 @@ async function processGoogleAuth(req, res) {
       }
     }
 
-    if (adminUser.role !== 'ADMIN' || !adminUser.isActive || (name && adminUser.name !== name)) {
-      adminUser = await prisma.user.update({
-        where: { id: adminUser.id },
-        data: { role: 'ADMIN', isActive: true, ...(name && { name }) }
-      });
+    if (adminUser.role !== 'ADMIN' || !adminUser.isActive) {
+      return res.status(403).json({ success: false, message: 'Access Denied: Account is not an active Super Admin.' });
     }
   } else {
-    const dummyHash = await bcrypt.hash(Math.random().toString(36) + Date.now(), 10);
-    adminUser = await prisma.user.create({
-      data: {
-        name: name || cleanEmail.split('@')[0],
-        email: cleanEmail,
-        phone: cleanEmail,
-        passwordHash: dummyHash,
-        role: 'ADMIN',
-        isActive: true,
-      }
-    });
+    return res.status(403).json({ success: false, message: 'Access Denied: Google sign-in is not authorized for new Super Admin accounts.' });
   }
 
   const { accessToken, refreshToken } = signTokens(adminUser.id, adminUser.role);

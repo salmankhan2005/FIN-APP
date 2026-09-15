@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { signInWithGoogleForAdmin } from '../services/firebase';
 import { User, Lock, Eye, EyeOff, ArrowLeft, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
-import ThemeToggle from '../components/ThemeToggle';
 
 const roleConfigs = {
   ADMIN: {
@@ -15,7 +14,7 @@ const roleConfigs = {
     idLabel: 'Username or Email',
     idPlaceholder: 'admin@finova.com or phone',
     passPlaceholder: '••••••••',
-    showGoogle: true,
+    showGoogle: false,
   },
   AGENT: {
     title: 'Collection Agent',
@@ -175,9 +174,6 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN', onLogi
             <span>{cfg.emoji}</span>
             <span>{cfg.title}</span>
           </div>
-
-          {/* Theme toggle */}
-          <ThemeToggle compact={true} />
         </div>
 
         {/* Content Section */}

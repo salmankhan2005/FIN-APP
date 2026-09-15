@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ChevronRight, CheckCircle2, ShieldCheck, Sparkles, User, ArrowRight, Shield, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import ThemeToggle from '../components/ThemeToggle';
 
 const roles = [
   {
@@ -170,11 +169,6 @@ export default function RoleSelectionPage({ onSelectRole, onBack }) {
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Theme Toggle Button in Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <ThemeToggle compact={true} />
             </div>
           </div>
 

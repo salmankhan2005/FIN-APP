@@ -222,67 +222,7 @@ export default function LoginPage({ onBackToHome, selectedRole = 'ADMIN', onLogi
             </p>
           </div>
 
-          {/* ACTIVE SESSION QUICK RESTORE CARD (If session already exists) */}
-          {isSessionActive && (
-            <div style={{
-              marginBottom: 18,
-              padding: '14px 16px',
-              borderRadius: 16,
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(37, 99, 235, 0.08) 100%)',
-              border: '1.5px solid rgba(16, 185, 129, 0.35)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontSize: 11.5, fontWeight: 700 }}>
-                  <ShieldCheck size={14} />
-                  <span>Active Session Detected</span>
-                </div>
-                <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>No password needed</span>
-              </div>
 
-              {savedUser?.name && (
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary, #ffffff)' }}>
-                  Logged in as: <span style={{ color: '#10b981' }}>{savedUser.name}</span>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={handleResumeSession}
-                style={{
-                  width: '100%',
-                  height: 42,
-                  background: '#10b981',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: 12,
-                  fontSize: 13.5,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <span>Resume Session as {savedUser?.name ? savedUser.name.split(' ')[0] : cfg.title}</span>
-                <ArrowRight size={15} />
-              </button>
-
-              <div style={{
-                textAlign: 'center',
-                fontSize: 11,
-                color: 'var(--text-muted, #94a3b8)',
-                marginTop: 2,
-              }}>
-                Or enter credentials below to change account:
-              </div>
-            </div>
-          )}
 
           {/* Error message */}
           {error && (
